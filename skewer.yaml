@@ -35,15 +35,103 @@ steps:
   - standard: set_up_your_namespaces
   - title: Apply YAML
     preamble: |
-      XXX
+      [Skupper YAML config reference](https://github.com/ssorj/refdog)
+
+      #### Resources
+
+      `install.yaml` - The Skupper site controller
+
+      West:
+
+      * `west/site.yaml` - Site configuration for `west`
+      * `west/console.yaml` - Configuration for the console
+      * `west/frontend.yml` - The Hello World frontend deployment
+      * `west/listener.yaml` - The listener for the `backend` service
+
+      East:
+
+      * `east/backend.yaml` - The Hello World backend deployment
+      * `east/site.yaml` - Site configuration for `east`
+      * `east/connector.yaml` - The connector for the `backend` service
+
+      #### Resources in west
+
+      `site`:
+
+      ~~~ yaml
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: skupper-site
+        labels:
+          skupper.io/type: site
+      data:
+        name: west
+      ~~~
+
+      `console`:
+
+      ~~~ yaml
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: skupper-console
+        labels:
+          skupper.io/type: console
+      ~~~
+
+      `listener`:
+
+      ~~~ yaml
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: skupper-listener-backend
+        labels:
+          skupper.io/type: listener
+      data:
+        routing-key: backend:http
+        hostname: backend
+        port: 8080
+      ~~~
+
+      #### Resources in east
+
+      `site`:
+
+      ~~~ yaml
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: skupper-site
+        labels:
+          skupper.io/type: site
+      data: |
+        name: east
+      ~~~
+
+      `connector`:
+
+      ~~~ yaml
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: skupper-connector-backend
+        labels:
+          skupper.io/type: connector
+      data: |
+        routing-key: backend:http
+        port: 8080
+        selector: app=backend
+      ~~~
     commands:
       west:
-        - run: kubectl apply -f install.yaml -f west/frontend.yaml -f west/site.yaml -f west/listener.yaml
+        - run: kubectl apply -f install.yaml -f west/site.yaml -f west/console.yaml -f west/frontend.yaml -f west/listener.yaml
           await_external_ip: service/skupper
       east:
-        - run: kubectl apply -f install.yaml -f east/backend.yaml -f east/site.yaml -f east/connector.yaml
+        - run: kubectl apply -f install.yaml -f east/site.yaml -f east/backend.yaml -f east/connector.yaml
           await_external_ip: service/skupper
-  - title: Link your namespaces
+  - standard: link_your_namespaces
     preamble: |
       XXX
 
@@ -63,17 +151,6 @@ steps:
 
       [install-script]: https://github.com/skupperproject/skupper-website/blob/main/docs/install.sh
       [install-docs]: https://skupper.io/install/index.html
-    commands:
-      west:
-        - run: skupper token create ~/secret.token
-          output: Token written to ~/secret.token
-      east:
-        - run: skupper link create ~/secret.token
-          output: |
-            Site configured to link to https://10.105.193.154:8081/ed9c37f6-d78a-11ec-a8c7-04421a4c5042 (name=link1)
-            Check the status of the link using 'skupper link status'.
-        - run: skupper link status --wait 60
-          apply: test
   - title: Special extra step
     preamble: |
       This will disappear when we have the new service binding YAML.
@@ -81,7 +158,7 @@ steps:
       east:
         - run: skupper expose deployment/backend
   - standard: test_the_application
-  # - standard: accessing_the_web_console
+  - standard: accessing_the_web_console
   - standard: cleaning_up
     commands:
       west:
