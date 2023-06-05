@@ -1,0 +1,11 @@
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: skupper-connector-backend
+#   namespace: east
+#   labels:
+#     skupper.io/type: connector
+# data: |
+#   routing-key: backend:http
+#   port: 8080
+#   selector: app=backend
