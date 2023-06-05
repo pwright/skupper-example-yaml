@@ -1,6 +1,6 @@
 # Skupper Hello World with YAML
 
-[![main](https://github.com/skupperproject/skupper-example-hello-world/actions/workflows/main.yaml/badge.svg)](https://github.com/skupperproject/skupper-example-hello-world/actions/workflows/main.yaml)
+[![main](https://github.com/ssorj/skupper-example-yaml/actions/workflows/main.yaml/badge.svg)](https://github.com/ssorj/skupper-example-yaml/actions/workflows/main.yaml)
 
 #### A minimal HTTP application deployed across Kubernetes clusters using Skupper
 
@@ -27,8 +27,8 @@ across cloud providers, data centers, and edge sites.
 
 ## Overview
 
-This example is a variant of [Skupper Hello World][hw] that is
-deployed using YAML resource definitions instead of imperative
+This example is a variant of [Skupper Hello World][hello-world] that
+is deployed using YAML resource definitions instead of imperative
 commands.
 
 It contains two services:
@@ -46,7 +46,7 @@ services without exposing the backend to the public internet.
 
 <img src="images/entities.svg" width="640"/>
 
-[hw]: https://github.com/skupperproject/skupper-example-hello-world
+[hello-world]: https://github.com/skupperproject/skupper-example-hello-world
 
 ## Prerequisites
 
