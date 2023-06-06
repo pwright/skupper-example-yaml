@@ -106,7 +106,7 @@ steps:
         name: skupper-site
         labels:
           skupper.io/type: site
-      data: |
+      data:
         name: east
       ~~~
 
@@ -119,7 +119,7 @@ steps:
         name: skupper-connector-backend
         labels:
           skupper.io/type: connector
-      data: |
+      data:
         routing-key: backend:http
         port: 8080
         selector: app=backend
