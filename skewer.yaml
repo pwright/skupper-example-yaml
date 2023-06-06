@@ -32,61 +32,50 @@ sites:
 steps:
   - standard: configure_separate_console_sessions
   - standard: access_your_clusters
-  - standard: set_up_your_namespaces
   - title: Apply YAML
     preamble: |
       [Skupper YAML config reference](https://github.com/ssorj/refdog)
 
       #### Resources
 
-      `install.yaml` - The Skupper site controller
-
       West:
 
-      * `west/site.yaml` - Site configuration for `west`
-      * `west/console.yaml` - Configuration for the console
-      * `west/frontend.yml` - The Hello World frontend deployment
+      * `west/frontend.yml` - The Hello World frontend
+      * `west/skupper.yaml` - The Skupper site controller
+      * `west/site.yaml` - Configuration for site `west`
       * `west/listener.yaml` - The listener for the `backend` service
 
       East:
 
-      * `east/backend.yaml` - The Hello World backend deployment
-      * `east/site.yaml` - Site configuration for `east`
+      * `east/backend.yaml` - The Hello World backend
+      * `east/skupper.yaml` - The Skupper site controller
+      * `east/site.yaml` - Configuration for site `east`
       * `east/connector.yaml` - The connector for the `backend` service
 
       #### Resources in west
 
-      `site`:
+      [site.yaml](west/site.yaml):
 
       ~~~ yaml
       apiVersion: v1
       kind: ConfigMap
       metadata:
         name: skupper-site
+        namespace: west
         labels:
           skupper.io/type: site
       data:
         name: west
       ~~~
 
-      `console`:
-
-      ~~~ yaml
-      apiVersion: v1
-      kind: ConfigMap
-      metadata:
-        name: skupper-console
-        labels:
-          skupper.io/type: console
-      ~~~
-
-      `listener`:
+      [listener.yaml](west/listener.yaml):
 
       ~~~ yaml
       apiVersion: v1
       kind: ConfigMap
       metadata:
         name: skupper-listener-backend
+        namespace: west
         labels:
           skupper.io/type: listener
       data:
@@ -97,26 +86,28 @@ steps:
 
       #### Resources in east
 
-      `site`:
+      [site.yaml](east/site.yaml):
 
       ~~~ yaml
       apiVersion: v1
       kind: ConfigMap
       metadata:
         name: skupper-site
+        namespace: east
         labels:
           skupper.io/type: site
       data:
         name: east
       ~~~
 
-      `connector`:
+      [connector.yaml](east/connector.yaml):
 
       ~~~ yaml
       apiVersion: v1
       kind: ConfigMap
       metadata:
         name: skupper-connector-backend
+        namespace: east
         labels:
           skupper.io/type: connector
       data:
@@ -126,13 +117,20 @@ steps:
       ~~~
     commands:
       west:
-        - run: kubectl apply -f install.yaml -f west/site.yaml -f west/console.yaml -f west/frontend.yaml -f west/listener.yaml
+        - run: kubectl apply -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml -f west/listener.yaml
           await_external_ip: service/skupper
       east:
-        - run: kubectl apply -f install.yaml -f east/site.yaml -f east/backend.yaml -f east/connector.yaml
+        - run: kubectl apply -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml -f east/connector.yaml
           await_external_ip: service/skupper
   - standard: link_your_namespaces
     preamble: |
+      You can do X and Y declaratively, but linking...
+
+      Unlike the other aspects of Skupper setup, linking namespaces is
+      necessarily procedural.  That's because the connection details
+      embedded in the tokens used for linking cannot be known in
+      advance.
+
       XXX
 
       On Linux or Mac, you can use the install script (inspect it
@@ -158,10 +156,9 @@ steps:
       east:
         - run: skupper expose deployment/backend
   - standard: test_the_application
-  - standard: accessing_the_web_console
   - standard: cleaning_up
     commands:
       west:
-        - run: kubectl delete -f install.yaml -f west/frontend.yaml -f west/site.yaml -f west/listener.yaml
+        - run: kubectl delete -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml -f west/listener.yaml
       east:
-        - run: kubectl delete -f install.yaml -f east/backend.yaml -f east/site.yaml -f east/connector.yaml
+        - run: kubectl delete -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml -f east/connector.yaml

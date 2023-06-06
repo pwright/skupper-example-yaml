@@ -17,12 +17,10 @@ across cloud providers, data centers, and edge sites.
 * [Prerequisites](#prerequisites)
 * [Step 1: Configure separate console sessions](#step-1-configure-separate-console-sessions)
 * [Step 2: Access your clusters](#step-2-access-your-clusters)
-* [Step 3: Set up your namespaces](#step-3-set-up-your-namespaces)
-* [Step 4: Apply YAML](#step-4-apply-yaml)
-* [Step 5: Link your namespaces](#step-5-link-your-namespaces)
-* [Step 6: Special extra step](#step-6-special-extra-step)
-* [Step 7: Test the application](#step-7-test-the-application)
-* [Accessing the web console](#accessing-the-web-console)
+* [Step 3: Apply YAML](#step-3-apply-yaml)
+* [Step 4: Link your namespaces](#step-4-link-your-namespaces)
+* [Step 5: Special extra step](#step-5-special-extra-step)
+* [Step 6: Test the application](#step-6-test-the-application)
 * [Cleaning up](#cleaning-up)
 * [About this example](#about-this-example)
 
@@ -63,9 +61,9 @@ services without exposing the backend to the public internet.
 ## Step 1: Configure separate console sessions
 
 Skupper is designed for use with multiple namespaces, usually on
-different clusters.  The `skupper` command uses your
+different clusters.  The `skupper` and `kubectl` commands use your
 [kubeconfig][kubeconfig] and current context to select the
-namespace where it operates.
+namespace where they operate.
 
 [kubeconfig]: https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
 
@@ -102,80 +100,50 @@ configure access for each console session.
 
 [kube-providers]: https://skupper.io/start/kubernetes.html
 
-## Step 3: Set up your namespaces
-
-Use `kubectl create namespace` to create the namespaces you wish
-to use (or use existing namespaces).  Use `kubectl config
-set-context` to set the current namespace for each session.
-
-_**Console for west:**_
-
-~~~ shell
-kubectl create namespace west
-kubectl config set-context --current --namespace west
-~~~
-
-_**Console for east:**_
-
-~~~ shell
-kubectl create namespace east
-kubectl config set-context --current --namespace east
-~~~
-
-## Step 4: Apply YAML
+## Step 3: Apply YAML
 
 [Skupper YAML config reference](https://github.com/ssorj/refdog)
 
 #### Resources
 
-`install.yaml` - The Skupper site controller
-
 West:
 
-* `west/site.yaml` - Site configuration for `west`
-* `west/console.yaml` - Configuration for the console
-* `west/frontend.yml` - The Hello World frontend deployment
+* `west/frontend.yml` - The Hello World frontend
+* `west/skupper.yaml` - The Skupper site controller
+* `west/site.yaml` - Configuration for site `west`
 * `west/listener.yaml` - The listener for the `backend` service
 
 East:
 
-* `east/backend.yaml` - The Hello World backend deployment
-* `east/site.yaml` - Site configuration for `east`
+* `east/backend.yaml` - The Hello World backend
+* `east/skupper.yaml` - The Skupper site controller
+* `east/site.yaml` - Configuration for site `east`
 * `east/connector.yaml` - The connector for the `backend` service
 
 #### Resources in west
 
-`site`:
+[site.yaml](west/site.yaml):
 
 ~~~ yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: skupper-site
+  namespace: west
   labels:
     skupper.io/type: site
 data:
   name: west
 ~~~
 
-`console`:
-
-~~~ yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: skupper-console
-  labels:
-    skupper.io/type: console
-~~~
-
-`listener`:
+[listener.yaml](west/listener.yaml):
 
 ~~~ yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: skupper-listener-backend
+  namespace: west
   labels:
     skupper.io/type: listener
 data:
@@ -186,29 +154,31 @@ data:
 
 #### Resources in east
 
-`site`:
+[site.yaml](east/site.yaml):
 
 ~~~ yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: skupper-site
+  namespace: east
   labels:
     skupper.io/type: site
-data: |
+data:
   name: east
 ~~~
 
-`connector`:
+[connector.yaml](east/connector.yaml):
 
 ~~~ yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: skupper-connector-backend
+  namespace: east
   labels:
     skupper.io/type: connector
-data: |
+data:
   routing-key: backend:http
   port: 8080
   selector: app=backend
@@ -217,16 +187,23 @@ data: |
 _**Console for west:**_
 
 ~~~ shell
-kubectl apply -f install.yaml -f west/site.yaml -f west/console.yaml -f west/frontend.yaml -f west/listener.yaml
+kubectl apply -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml -f west/listener.yaml
 ~~~
 
 _**Console for east:**_
 
 ~~~ shell
-kubectl apply -f install.yaml -f east/site.yaml -f east/backend.yaml -f east/connector.yaml
+kubectl apply -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml -f east/connector.yaml
 ~~~
 
-## Step 5: Link your namespaces
+## Step 4: Link your namespaces
+
+You can do X and Y declaratively, but linking...
+
+Unlike the other aspects of Skupper setup, linking namespaces is
+necessarily procedural.  That's because the connection details
+embedded in the tokens used for linking cannot be known in
+advance.
 
 XXX
 
@@ -279,7 +256,7 @@ to use `sftp` or a similar tool to transfer the token securely.
 By default, tokens expire after a single use or 15 minutes after
 creation.
 
-## Step 6: Special extra step
+## Step 5: Special extra step
 
 This will disappear when we have the new service binding YAML.
 
@@ -289,7 +266,7 @@ _**Console for east:**_
 skupper expose deployment/backend
 ~~~
 
-## Step 7: Test the application
+## Step 6: Test the application
 
 Now we're ready to try it out.  Use `kubectl get service/frontend`
 to look up the external IP of the frontend service.  Then use
@@ -320,40 +297,6 @@ OK
 If everything is in order, you can now access the web interface by
 navigating to `http://<external-ip>:8080/` in your browser.
 
-## Accessing the web console
-
-Skupper includes a web console you can use to view the application
-network.  To access it, use `skupper status` to look up the URL of
-the web console.  Then use `kubectl get
-secret/skupper-console-users` to look up the console admin
-password.
-
-**Note:** The `<console-url>` and `<password>` fields in the
-following output are placeholders.  The actual values are specific
-to your environment.
-
-_**Console for west:**_
-
-~~~ shell
-skupper status
-kubectl get secret/skupper-console-users -o jsonpath={.data.admin} | base64 -d
-~~~
-
-_Sample output:_
-
-~~~ console
-$ skupper status
-Skupper is enabled for namespace "west" in interior mode. It is connected to 1 other site. It has 1 exposed service.
-The site console url is: <console-url>
-The credentials for internal console-auth mode are held in secret: 'skupper-console-users'
-
-$ kubectl get secret/skupper-console-users -o jsonpath={.data.admin} | base64 -d
-<password>
-~~~
-
-Navigate to `<console-url>` in your browser.  When prompted, log
-in as user `admin` and enter the password.
-
 ## Cleaning up
 
 To remove Skupper and the other resources from this exercise, use
@@ -362,13 +305,13 @@ the following commands.
 _**Console for west:**_
 
 ~~~ shell
-kubectl delete -f install.yaml -f west/frontend.yaml -f west/site.yaml -f west/listener.yaml
+kubectl delete -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml -f west/listener.yaml
 ~~~
 
 _**Console for east:**_
 
 ~~~ shell
-kubectl delete -f install.yaml -f east/backend.yaml -f east/site.yaml -f east/connector.yaml
+kubectl delete -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml -f east/connector.yaml
 ~~~
 
 ## Next steps

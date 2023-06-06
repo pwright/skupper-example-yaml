@@ -5,7 +5,7 @@
 #   namespace: west
 #   labels:
 #     skupper.io/type: listener
-# data: |
+# data:
 #   routing-key: backend:http
 #   hostname: backend
 #   port: 8080

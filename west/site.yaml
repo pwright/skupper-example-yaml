@@ -2,15 +2,16 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: skupper-site
+  namespace: west
 data:
   name: west
-  console: "true" # XXX
 
 # apiVersion: v1
 # kind: ConfigMap
 # metadata:
 #   name: skupper-site
+#   namespace: west
 #   labels:
 #     skupper.io/type: site
-# data: |
+# data:
 #   name: west
