@@ -19,8 +19,7 @@ across cloud providers, data centers, and edge sites.
 * [Step 2: Access your clusters](#step-2-access-your-clusters)
 * [Step 3: Apply YAML](#step-3-apply-yaml)
 * [Step 4: Link your namespaces](#step-4-link-your-namespaces)
-* [Step 5: Special extra step](#step-5-special-extra-step)
-* [Step 6: Test the application](#step-6-test-the-application)
+* [Step 5: Test the application](#step-5-test-the-application)
 * [Cleaning up](#cleaning-up)
 * [About this example](#about-this-example)
 
@@ -166,6 +165,7 @@ metadata:
     skupper.io/type: site
 data:
   name: east
+  ingress: none
 ~~~
 
 [connector.yaml](east/connector.yaml):
@@ -190,39 +190,64 @@ _**Console for west:**_
 kubectl apply -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml -f west/listener.yaml
 ~~~
 
+_Sample output:_
+
+~~~ console
+$ kubectl apply -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml -f west/listener.yaml
+namespace/west created
+deployment.apps/frontend created
+service/frontend created
+serviceaccount/skupper-site-controller created
+role.rbac.authorization.k8s.io/skupper-site-controller created
+rolebinding.rbac.authorization.k8s.io/skupper-site-controller created
+deployment.apps/skupper-site-controller created
+configmap/skupper-site created
+~~~
+
 _**Console for east:**_
 
 ~~~ shell
 kubectl apply -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml -f east/connector.yaml
 ~~~
 
+_Sample output:_
+
+~~~ console
+$ kubectl apply -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml -f east/connector.yaml
+namespace/east created
+deployment.apps/backend created
+serviceaccount/skupper-site-controller created
+role.rbac.authorization.k8s.io/skupper-site-controller created
+rolebinding.rbac.authorization.k8s.io/skupper-site-controller created
+deployment.apps/skupper-site-controller created
+configmap/skupper-site created
+~~~
+
 ## Step 4: Link your namespaces
 
-You can do X and Y declaratively, but linking...
+You can configure sites and service bindings declaratively, but
+linking sites is different.  To create a link, you must have the
+authentication secret and connection details of the remote site.
+Since these cannot be known in advance, linking must be
+procedural.
 
-Unlike the other aspects of Skupper setup, linking namespaces is
-necessarily procedural.  That's because the connection details
-embedded in the tokens used for linking cannot be known in
-advance.
+This example uses the Skupper command line tool to generate the
+secret token in West and create the link in East.
 
-XXX
-
-On Linux or Mac, you can use the install script (inspect it
-[here][install-script]) to download and extract the command:
+To install the Skupper command:
 
 ~~~ shell
 curl https://skupper.io/install.sh | sh
 ~~~
 
-For Windows and other installation options, see [Installing
-Skupper][install-docs].
+For more installation options, see [Installing
+Skupper][install].
 
-First, use `skupper token create` in one namespace to generate the
-token.  Then, use `skupper link create` in the other to create a
-link.
+Once the command is installed, use `skupper token create` in
+West to generate the token.  Then, use `skupper link create` in
+East to create a link.
 
-[install-script]: https://github.com/skupperproject/skupper-website/blob/main/docs/install.sh
-[install-docs]: https://skupper.io/install/index.html
+[install]: https://skupper.io/install/index.html
 
 _**Console for west:**_
 
@@ -256,17 +281,7 @@ to use `sftp` or a similar tool to transfer the token securely.
 By default, tokens expire after a single use or 15 minutes after
 creation.
 
-## Step 5: Special extra step
-
-This will disappear when we have the new service binding YAML.
-
-_**Console for east:**_
-
-~~~ shell
-skupper expose deployment/backend
-~~~
-
-## Step 6: Test the application
+## Step 5: Test the application
 
 Now we're ready to try it out.  Use `kubectl get service/frontend`
 to look up the external IP of the frontend service.  Then use
