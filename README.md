@@ -17,7 +17,7 @@ across cloud providers, data centers, and edge sites.
 * [Prerequisites](#prerequisites)
 * [Step 1: Configure separate console sessions](#step-1-configure-separate-console-sessions)
 * [Step 2: Access your clusters](#step-2-access-your-clusters)
-* [Step 3: Apply YAML](#step-3-apply-yaml)
+* [Step 3: Apply your YAML resources](#step-3-apply-your-yaml-resources)
 * [Step 4: Link your namespaces](#step-4-link-your-namespaces)
 * [Step 5: Test the application](#step-5-test-the-application)
 * [Cleaning up](#cleaning-up)
@@ -99,7 +99,7 @@ configure access for each console session.
 
 [kube-providers]: https://skupper.io/start/kubernetes.html
 
-## Step 3: Apply YAML
+## Step 3: Apply your YAML resources
 
 [Skupper YAML config reference](https://github.com/ssorj/refdog)
 
@@ -108,14 +108,14 @@ configure access for each console session.
 West:
 
 * `west/frontend.yml` - The Hello World frontend
-* `west/skupper.yaml` - The Skupper site controller
+* `west/skupper.yaml` - The Skupper controller
 * `west/site.yaml` - Configuration for site `west`
 * `west/listener.yaml` - The listener for the `backend` service
 
 East:
 
 * `east/backend.yaml` - The Hello World backend
-* `east/skupper.yaml` - The Skupper site controller
+* `east/skupper.yaml` - The Skupper controller
 * `east/site.yaml` - Configuration for site `east`
 * `east/connector.yaml` - The connector for the `backend` service
 

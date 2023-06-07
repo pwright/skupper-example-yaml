@@ -32,7 +32,7 @@ sites:
 steps:
   - standard: configure_separate_console_sessions
   - standard: access_your_clusters
-  - title: Apply YAML
+  - title: Apply your YAML resources
     preamble: |
       [Skupper YAML config reference](https://github.com/ssorj/refdog)
 
@@ -41,14 +41,14 @@ steps:
       West:
 
       * `west/frontend.yml` - The Hello World frontend
-      * `west/skupper.yaml` - The Skupper site controller
+      * `west/skupper.yaml` - The Skupper controller
       * `west/site.yaml` - Configuration for site `west`
       * `west/listener.yaml` - The listener for the `backend` service
 
       East:
 
       * `east/backend.yaml` - The Hello World backend
-      * `east/skupper.yaml` - The Skupper site controller
+      * `east/skupper.yaml` - The Skupper controller
       * `east/site.yaml` - Configuration for site `east`
       * `east/connector.yaml` - The connector for the `backend` service
 
