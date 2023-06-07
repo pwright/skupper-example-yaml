@@ -146,8 +146,10 @@ data:
 The Hello World example has a frontend workload in west that
 sends HTTP requests to a backend service.  To make that service
 available in west, create a `listener` resource with
-`routing-key: backend:http`.  Connections to the listener are
-routed to connectors in remote sites with matching routing keys.
+`routing-key: backend:http`.  Connections to the local listener
+are routed to connectors in remote sites with matching routing
+keys.  The `hostname` and `port` fields define the local
+connection endpoint.
 
 [listener.yaml](west/listener.yaml):
 
@@ -167,8 +169,8 @@ data:
 
 #### Resources in east
 
-Like the one for `west`, here is the Skupper site definition for
-the `east` namespace.  It includes the `ingress: none` setting
+Like the one for west, here is the Skupper site definition for
+the east namespace.  It includes the `ingress: none` setting
 since no ingress inquired at this site for the Hello World
 example.
 
@@ -187,9 +189,12 @@ data:
   ingress: none
 ~~~
 
-We have the `listener` defined.  Now we need the corresponding
-`connector`.  It has the same routing key and includes a pod
-selector for identifying the target workload.
+We have the `listener` for the backend defined in west.  We need
+the corresponding `connector` in east.  Note that it has the
+same routing key as the backend `listener`.
+
+The `selector` field identifies the pods implementing the
+service.
 
 [connector.yaml](east/connector.yaml):
 
