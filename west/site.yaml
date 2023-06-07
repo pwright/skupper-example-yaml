@@ -5,6 +5,8 @@ metadata:
   namespace: west
 data:
   name: west
+  console: "true"
+  flow-controller: "true"
 
 # apiVersion: v1
 # kind: ConfigMap

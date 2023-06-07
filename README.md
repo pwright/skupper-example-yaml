@@ -231,6 +231,11 @@ authentication secret and connection details of the remote site.
 Since these cannot be known in advance, linking must be
 procedural.
 
+**Note:** There are several ways to automate the generation and
+distribution of tokens across sites, using for example Ansible,
+Backstage, or Vault.  See [Token distribution]() for more
+information.
+
 This example uses the Skupper command line tool to generate the
 secret token in West and create the link in East.
 
