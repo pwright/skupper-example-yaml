@@ -100,8 +100,8 @@ steps:
 
       #### Resources in east
 
-      Like the one for `west`, here is the Skupper site definition for
-      the `east` namespace.  It includes the `ingress: none` setting
+      Like the one for west, here is the Skupper site definition for
+      the east namespace.  It includes the `ingress: none` setting
       since no ingress inquired at this site for the Hello World
       example.
 
