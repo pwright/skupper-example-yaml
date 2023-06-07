@@ -101,25 +101,33 @@ configure access for each console session.
 
 ## Step 3: Apply your YAML resources
 
-[Skupper YAML config reference](https://github.com/ssorj/refdog)
-
-#### Resources
+To configure our example sites and service bindings, we are
+using the following resources:
 
 West:
 
-* `west/frontend.yml` - The Hello World frontend
-* `west/skupper.yaml` - The Skupper controller
-* `west/site.yaml` - Configuration for site `west`
-* `west/listener.yaml` - The listener for the `backend` service
+* [frontend.yml](west/frontend.yaml) - The Hello World frontend
+* [skupper.yaml](west/skupper.yaml) - The Skupper controller
+* [site.yaml](west/site.yaml) - Configuration for site `west`
+* [listener.yaml](west/listener.yaml) - The listener for the `backend` service
 
 East:
 
-* `east/backend.yaml` - The Hello World backend
-* `east/skupper.yaml` - The Skupper controller
-* `east/site.yaml` - Configuration for site `east`
-* `east/connector.yaml` - The connector for the `backend` service
+* [backend.yaml](east/backend.yaml) - The Hello World backend
+* [skupper.yaml](east/skupper.yaml) - The Skupper controller
+* [site.yaml](east/site.yaml) - Configuration for site `east`
+* [connector.yaml](east/connector.yaml) - The connector for the `backend` service
+
+Let's look at some of these resources in more detail.
 
 #### Resources in west
+
+The `site` ConfigMap defines a Skupper site for its associated
+Kubernetes namespace.  This is where you set site configuration
+options.  See the [config reference][config] for more
+information.
+
+[config]: https://github.com/ssorj/refdog
 
 [site.yaml](west/site.yaml):
 
@@ -134,6 +142,12 @@ metadata:
 data:
   name: west
 ~~~
+
+The Hello World example has a frontend workload in west that
+sends HTTP requests to a backend service.  To make that service
+available in west, create a `listener` resource with
+`routing-key: backend:http`.  Connections to the listener are
+routed to connectors in remote sites with matching routing keys.
 
 [listener.yaml](west/listener.yaml):
 
@@ -153,6 +167,11 @@ data:
 
 #### Resources in east
 
+Like the one for `west`, here is the Skupper site definition for
+the `east` namespace.  It includes the `ingress: none` setting
+since no ingress inquired at this site for the Hello World
+example.
+
 [site.yaml](east/site.yaml):
 
 ~~~ yaml
@@ -167,6 +186,10 @@ data:
   name: east
   ingress: none
 ~~~
+
+We have the `listener` defined.  Now we need the corresponding
+`connector`.  It has the same routing key and includes a pod
+selector for identifying the target workload.
 
 [connector.yaml](east/connector.yaml):
 
@@ -183,6 +206,9 @@ data:
   port: 8080
   selector: app=backend
 ~~~
+
+Now we're ready to apply everything.  Use `kubectl apply`
+command with the resource definitions for each site.
 
 _**Console for west:**_
 
@@ -237,7 +263,7 @@ Backstage, or Vault.  See [Token distribution]() for more
 information.
 
 This example uses the Skupper command line tool to generate the
-secret token in West and create the link in East.
+secret token in west and create the link in east.
 
 To install the Skupper command:
 
@@ -249,8 +275,8 @@ For more installation options, see [Installing
 Skupper][install].
 
 Once the command is installed, use `skupper token create` in
-West to generate the token.  Then, use `skupper link create` in
-East to create a link.
+west to generate the token.  Then, use `skupper link create` in
+east to create a link.
 
 [install]: https://skupper.io/install/index.html
 
