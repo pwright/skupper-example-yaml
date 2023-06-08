@@ -148,8 +148,8 @@ sends HTTP requests to a backend service.  To make that service
 available in west, create a `listener` resource with
 `routing-key: backend:http`.  Connections to the local listener
 are routed to connectors in remote sites with matching routing
-keys.  The `hostname` and `port` fields define the local
-connection endpoint.
+keys.  The `host` and `port` fields define the local connection
+endpoint.
 
 [listener.yaml](west/listener.yaml):
 
@@ -163,7 +163,7 @@ metadata:
     skupper.io/type: listener
 data:
   routing-key: backend:http
-  hostname: backend
+  host: backend
   port: 8080
 ~~~
 
@@ -208,8 +208,8 @@ metadata:
     skupper.io/type: connector
 data:
   routing-key: backend:http
-  port: 8080
   selector: app=backend
+  port: 8080
 ~~~
 
 Now we're ready to apply everything.  Use `kubectl apply`
