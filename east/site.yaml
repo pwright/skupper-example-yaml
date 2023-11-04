@@ -5,6 +5,7 @@ metadata:
   namespace: east
 data:
   name: east
+  ingress: "false"
 
 # apiVersion: v1
 # kind: ConfigMap
