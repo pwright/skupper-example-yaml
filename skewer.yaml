@@ -76,35 +76,11 @@ steps:
         name: west
       ~~~
 
-      The Hello World example has a frontend workload in west that
-      sends HTTP requests to a backend service.  To make that service
-      available in west, create a `listener` resource with
-      `routing-key: backend:http`.  Connections to the local listener
-      are routed to connectors in remote sites with matching routing
-      keys.  The `host` and `port` fields define the local connection
-      endpoint.
-
-      [listener.yaml](west/listener.yaml):
-
-      ~~~ yaml
-      apiVersion: v1
-      kind: ConfigMap
-      metadata:
-        name: skupper-listener-backend
-        namespace: west
-        labels:
-          skupper.io/type: listener
-      data:
-        routing-key: backend:http
-        host: backend
-        port: 8080
-      ~~~
-
       #### Resources in east
 
       Like the one for west, here is the Skupper site definition for
       the east namespace.  It includes the `ingress: none` setting
-      since no ingress inquired at this site for the Hello World
+      since no ingress is required at this site for the Hello World
       example.
 
       [site.yaml](east/site.yaml):
@@ -122,27 +98,39 @@ steps:
         ingress: none
       ~~~
 
-      We have the `listener` for the backend defined in west.  We need
-      the corresponding `connector` in east.  Note that it has the
-      same routing key as the backend `listener`.
+      In east, the `backend` deployment has an annotation named
+      `skupper.io/proxy` with the value `tcp`.  This tells Skupper to
+      expose the backend on the Skupper network.  As a consequence,
+      the frontend in west will be able to see the backend and call
+      its API.
 
-      The `selector` field identifies the pods implementing the
-      service.
-
-      [connector.yaml](east/connector.yaml):
+      [backend.yaml](east/backend.yaml):
 
       ~~~ yaml
-      apiVersion: v1
-      kind: ConfigMap
+      apiVersion: apps/v1
+      kind: Deployment
       metadata:
-        name: skupper-connector-backend
+        name: backend
         namespace: east
         labels:
-          skupper.io/type: connector
-      data:
-        routing-key: backend:http
-        selector: app=backend
-        port: 8080
+          app: backend
+        annotations:
+          skupper.io/proxy: tcp
+      spec:
+        selector:
+          matchLabels:
+            app: backend
+        replicas: 3
+        template:
+          metadata:
+            labels:
+              app: backend
+          spec:
+            containers:
+              - name: backend
+                image: quay.io/skupper/hello-world-backend
+                ports:
+                  - containerPort: 8080
       ~~~
 
       Now we're ready to apply everything.  Use `kubectl apply`
