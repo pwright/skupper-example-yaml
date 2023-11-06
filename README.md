@@ -106,17 +106,15 @@ using the following resources:
 
 West:
 
-* [frontend.yml](west/frontend.yaml) - The Hello World frontend
+* [frontend.yaml](west/frontend.yaml) - The Hello World frontend
 * [skupper.yaml](west/skupper.yaml) - The Skupper controller
 * [site.yaml](west/site.yaml) - Configuration for site `west`
-* [listener.yaml](west/listener.yaml) - The listener for the `backend` service
 
 East:
 
 * [backend.yaml](east/backend.yaml) - The Hello World backend
 * [skupper.yaml](east/skupper.yaml) - The Skupper controller
 * [site.yaml](east/site.yaml) - Configuration for site `east`
-* [connector.yaml](east/connector.yaml) - The connector for the `backend` service
 
 Let's look at some of these resources in more detail.
 
@@ -137,8 +135,6 @@ kind: ConfigMap
 metadata:
   name: skupper-site
   namespace: west
-  labels:
-    skupper.io/type: site
 data:
   name: west
 ~~~
@@ -146,7 +142,7 @@ data:
 #### Resources in east
 
 Like the one for west, here is the Skupper site definition for
-the east namespace.  It includes the `ingress: none` setting
+the east namespace.  It includes the `ingress: "false"` setting
 since no ingress is required at this site for the Hello World
 example.
 
@@ -158,11 +154,9 @@ kind: ConfigMap
 metadata:
   name: skupper-site
   namespace: east
-  labels:
-    skupper.io/type: site
 data:
   name: east
-  ingress: none
+  ingress: "false"
 ~~~
 
 In east, the `backend` deployment has an annotation named
@@ -206,13 +200,13 @@ command with the resource definitions for each site.
 _**Console for west:**_
 
 ~~~ shell
-kubectl apply -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml -f west/listener.yaml
+kubectl apply -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml
 ~~~
 
 _Sample output:_
 
 ~~~ console
-$ kubectl apply -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml -f west/listener.yaml
+$ kubectl apply -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml
 namespace/west created
 deployment.apps/frontend created
 service/frontend created
@@ -226,13 +220,13 @@ configmap/skupper-site created
 _**Console for east:**_
 
 ~~~ shell
-kubectl apply -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml -f east/connector.yaml
+kubectl apply -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml
 ~~~
 
 _Sample output:_
 
 ~~~ console
-$ kubectl apply -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml -f east/connector.yaml
+$ kubectl apply -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml
 namespace/east created
 deployment.apps/backend created
 serviceaccount/skupper-site-controller created
@@ -344,13 +338,13 @@ the following commands.
 _**Console for west:**_
 
 ~~~ shell
-kubectl delete -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml -f west/listener.yaml
+kubectl delete -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml
 ~~~
 
 _**Console for east:**_
 
 ~~~ shell
-kubectl delete -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml -f east/connector.yaml
+kubectl delete -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml
 ~~~
 
 ## Next steps

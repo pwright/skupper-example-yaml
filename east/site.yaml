@@ -7,6 +7,8 @@ data:
   name: east
   ingress: "false"
 
+# In the future:
+#
 # apiVersion: v1
 # kind: ConfigMap
 # metadata:

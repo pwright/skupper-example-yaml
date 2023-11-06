@@ -8,6 +8,8 @@ data:
   console: "true"
   flow-controller: "true"
 
+# In the future:
+#
 # apiVersion: v1
 # kind: ConfigMap
 # metadata:
