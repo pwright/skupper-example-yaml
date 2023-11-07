@@ -6,16 +6,3 @@ metadata:
 data:
   name: east
   ingress: "false"
-
-# In the future:
-#
-# apiVersion: v1
-# kind: ConfigMap
-# metadata:
-#   name: skupper-site
-#   namespace: east
-#   labels:
-#     skupper.io/type: site
-# data: |
-#   name: east
-#   ingress: none
