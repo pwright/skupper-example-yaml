@@ -69,7 +69,6 @@ steps:
       kind: ConfigMap
       metadata:
         name: skupper-site
-        namespace: west
       data:
         name: west
       ~~~
@@ -88,7 +87,6 @@ steps:
       kind: ConfigMap
       metadata:
         name: skupper-site
-        namespace: east
       data:
         name: east
         ingress: "false"
@@ -107,7 +105,6 @@ steps:
       kind: Deployment
       metadata:
         name: backend
-        namespace: east
         labels:
           app: backend
         annotations:
@@ -135,7 +132,6 @@ steps:
       west:
         - run: kubectl apply -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml
           output: |
-            namespace/west created
             deployment.apps/frontend created
             service/frontend created
             serviceaccount/skupper-site-controller created
@@ -147,7 +143,6 @@ steps:
       east:
         - run: kubectl apply -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml
           output: |
-            namespace/east created
             deployment.apps/backend created
             serviceaccount/skupper-site-controller created
             role.rbac.authorization.k8s.io/skupper-site-controller created

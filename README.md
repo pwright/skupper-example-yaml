@@ -17,9 +17,10 @@ across cloud providers, data centers, and edge sites.
 * [Prerequisites](#prerequisites)
 * [Step 1: Configure separate console sessions](#step-1-configure-separate-console-sessions)
 * [Step 2: Access your clusters](#step-2-access-your-clusters)
-* [Step 3: Apply your YAML resources](#step-3-apply-your-yaml-resources)
-* [Step 4: Link your namespaces](#step-4-link-your-namespaces)
-* [Step 5: Test the application](#step-5-test-the-application)
+* [Step 3: Set up your namespaces](#step-3-set-up-your-namespaces)
+* [Step 4: Apply your YAML resources](#step-4-apply-your-yaml-resources)
+* [Step 5: Link your namespaces](#step-5-link-your-namespaces)
+* [Step 6: Test the application](#step-6-test-the-application)
 * [Cleaning up](#cleaning-up)
 * [About this example](#about-this-example)
 
@@ -99,7 +100,27 @@ configure access for each console session.
 
 [kube-providers]: https://skupper.io/start/kubernetes.html
 
-## Step 3: Apply your YAML resources
+## Step 3: Set up your namespaces
+
+Use `kubectl create namespace` to create the namespaces you wish
+to use (or use existing namespaces).  Use `kubectl config
+set-context` to set the current namespace for each session.
+
+_**Console for west:**_
+
+~~~ shell
+kubectl create namespace west
+kubectl config set-context --current --namespace west
+~~~
+
+_**Console for east:**_
+
+~~~ shell
+kubectl create namespace east
+kubectl config set-context --current --namespace east
+~~~
+
+## Step 4: Apply your YAML resources
 
 To configure our example sites and service bindings, we are
 using the following resources:
@@ -134,7 +155,6 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: skupper-site
-  namespace: west
 data:
   name: west
 ~~~
@@ -153,7 +173,6 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: skupper-site
-  namespace: east
 data:
   name: east
   ingress: "false"
@@ -172,7 +191,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
-  namespace: east
   labels:
     app: backend
   annotations:
@@ -207,7 +225,6 @@ _Sample output:_
 
 ~~~ console
 $ kubectl apply -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml
-namespace/west created
 deployment.apps/frontend created
 service/frontend created
 serviceaccount/skupper-site-controller created
@@ -227,7 +244,6 @@ _Sample output:_
 
 ~~~ console
 $ kubectl apply -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml
-namespace/east created
 deployment.apps/backend created
 serviceaccount/skupper-site-controller created
 role.rbac.authorization.k8s.io/skupper-site-controller created
@@ -236,7 +252,7 @@ deployment.apps/skupper-site-controller created
 configmap/skupper-site created
 ~~~
 
-## Step 4: Link your namespaces
+## Step 5: Link your namespaces
 
 You can configure sites and service bindings declaratively, but
 linking sites is different.  To create a link, you must have the
@@ -299,7 +315,7 @@ to use `sftp` or a similar tool to transfer the token securely.
 By default, tokens expire after a single use or 15 minutes after
 creation.
 
-## Step 5: Test the application
+## Step 6: Test the application
 
 Now we're ready to try it out.  Use `kubectl get service/frontend`
 to look up the external IP of the frontend service.  Then use
