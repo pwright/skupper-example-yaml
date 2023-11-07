@@ -18,9 +18,10 @@ across cloud providers, data centers, and edge sites.
 * [Step 1: Configure separate console sessions](#step-1-configure-separate-console-sessions)
 * [Step 2: Access your clusters](#step-2-access-your-clusters)
 * [Step 3: Set up your namespaces](#step-3-set-up-your-namespaces)
-* [Step 4: Apply your YAML resources](#step-4-apply-your-yaml-resources)
-* [Step 5: Link your namespaces](#step-5-link-your-namespaces)
-* [Step 6: Test the application](#step-6-test-the-application)
+* [Step 4: Install Skupper in your namespaces](#step-4-install-skupper-in-your-namespaces)
+* [Step 5: Apply your YAML resources](#step-5-apply-your-yaml-resources)
+* [Step 6: Link your namespaces](#step-6-link-your-namespaces)
+* [Step 7: Test the application](#step-7-test-the-application)
 * [Cleaning up](#cleaning-up)
 * [About this example](#about-this-example)
 
@@ -120,22 +121,34 @@ kubectl create namespace east
 kubectl config set-context --current --namespace east
 ~~~
 
-## Step 4: Apply your YAML resources
+## Step 4: Install Skupper in your namespaces
+
+_**Console for west:**_
+
+~~~ shell
+kubectl apply -f skupper.yaml
+~~~
+
+_**Console for east:**_
+
+~~~ shell
+kubectl apply -f skupper.yaml
+~~~
+
+## Step 5: Apply your YAML resources
 
 To configure our example sites and service bindings, we are
 using the following resources:
 
 West:
 
-* [frontend.yaml](west/frontend.yaml) - The Hello World frontend
-* [skupper.yaml](west/skupper.yaml) - The Skupper controller
 * [site.yaml](west/site.yaml) - Configuration for site `west`
+* [frontend.yaml](west/frontend.yaml) - The Hello World frontend
 
 East:
 
-* [backend.yaml](east/backend.yaml) - The Hello World backend
-* [skupper.yaml](east/skupper.yaml) - The Skupper controller
 * [site.yaml](east/site.yaml) - Configuration for site `east`
+* [backend.yaml](east/backend.yaml) - The Hello World backend
 
 Let's look at some of these resources in more detail.
 
@@ -218,41 +231,33 @@ command with the resource definitions for each site.
 _**Console for west:**_
 
 ~~~ shell
-kubectl apply -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml
+kubectl apply -f west/site.yaml -f west/frontend.yaml
 ~~~
 
 _Sample output:_
 
 ~~~ console
-$ kubectl apply -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml
+$ kubectl apply -f west/site.yaml -f west/frontend.yaml
+configmap/skupper-site created
 deployment.apps/frontend created
 service/frontend created
-serviceaccount/skupper-site-controller created
-role.rbac.authorization.k8s.io/skupper-site-controller created
-rolebinding.rbac.authorization.k8s.io/skupper-site-controller created
-deployment.apps/skupper-site-controller created
-configmap/skupper-site created
 ~~~
 
 _**Console for east:**_
 
 ~~~ shell
-kubectl apply -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml
+kubectl apply -f east/site.yaml -f east/backend.yaml
 ~~~
 
 _Sample output:_
 
 ~~~ console
-$ kubectl apply -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml
-deployment.apps/backend created
-serviceaccount/skupper-site-controller created
-role.rbac.authorization.k8s.io/skupper-site-controller created
-rolebinding.rbac.authorization.k8s.io/skupper-site-controller created
-deployment.apps/skupper-site-controller created
+$ kubectl apply -f east/site.yaml -f east/backend.yaml
 configmap/skupper-site created
+deployment.apps/backend created
 ~~~
 
-## Step 5: Link your namespaces
+## Step 6: Link your namespaces
 
 You can configure sites and service bindings declaratively, but
 linking sites is different.  To create a link, you must have the
@@ -315,7 +320,7 @@ to use `sftp` or a similar tool to transfer the token securely.
 By default, tokens expire after a single use or 15 minutes after
 creation.
 
-## Step 6: Test the application
+## Step 7: Test the application
 
 Now we're ready to try it out.  Use `kubectl get service/frontend`
 to look up the external IP of the frontend service.  Then use
@@ -354,13 +359,13 @@ the following commands.
 _**Console for west:**_
 
 ~~~ shell
-kubectl delete -f west/frontend.yaml -f west/skupper.yaml -f west/site.yaml
+kubectl delete -f skupper.yaml -f west/site.yaml -f west/frontend.yaml
 ~~~
 
 _**Console for east:**_
 
 ~~~ shell
-kubectl delete -f east/backend.yaml -f east/skupper.yaml -f east/site.yaml
+kubectl delete -f skupper.yaml -f east/site.yaml -f east/backend.yaml
 ~~~
 
 ## Next steps
