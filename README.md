@@ -125,7 +125,7 @@ Kubernetes namespace.  This is where you set site configuration
 options.  See the [config reference][config] for more
 information.
 
-[config]: https://github.com/ssorj/refdog
+[config]: https://skupper.io/docs/declarative/index.html
 
 [site.yaml](west/site.yaml):
 
@@ -194,7 +194,7 @@ spec:
             - containerPort: 8080
 ~~~
 
-Now we're ready to apply everything.  Use `kubectl apply`
+Now we're ready to apply everything.  Use the `kubectl apply`
 command with the resource definitions for each site.
 
 _**Console for west:**_
