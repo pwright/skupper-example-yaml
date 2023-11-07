@@ -32,6 +32,8 @@ sites:
 steps:
   - standard: configure_separate_console_sessions
   - standard: access_your_clusters
+  - standard: set_up_your_namespaces
+#  - standard: install_skupper_in_your_namespaces
   - title: Apply your YAML resources
     preamble: |
       To configure our example sites and service bindings, we are
