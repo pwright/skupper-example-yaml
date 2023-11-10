@@ -123,6 +123,14 @@ kubectl config set-context --current --namespace east
 
 ## Step 4: Install Skupper in your namespaces
 
+Use the `kubectl apply` command to install the Skupper router
+and controller in each namespace.
+
+**Note:** If you are using Minikube, [you need to start `minikube
+tunnel`][minikube-tunnel] before you install Skupper.
+
+[minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
+
 _**Console for west:**_
 
 ~~~ shell
@@ -199,15 +207,14 @@ its API.
 
 [backend.yaml](east/backend.yaml):
 
-~~~ yaml
-apiVersion: apps/v1
+<pre>apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
   labels:
     app: backend
-  annotations:
-    skupper.io/proxy: tcp
+  <b>annotations:
+    skupper.io/proxy: tcp</b>
 spec:
   selector:
     matchLabels:
@@ -222,8 +229,7 @@ spec:
         - name: backend
           image: quay.io/skupper/hello-world-backend
           ports:
-            - containerPort: 8080
-~~~
+            - containerPort: 8080</pre>
 
 Now we're ready to apply everything.  Use the `kubectl apply`
 command with the resource definitions for each site.
