@@ -80,13 +80,13 @@ Start a console session for each of your namespaces.  Set the
 `KUBECONFIG` environment variable to a different path in each
 session.
 
-_**Console for site-1:**_
+_**Console for site 1:**_
 
 ~~~ shell
 export KUBECONFIG=~/.kube/config-site-1
 ~~~
 
-_**Console for site-2:**_
+_**Console for site 2:**_
 
 ~~~ shell
 export KUBECONFIG=~/.kube/config-site-2
@@ -107,14 +107,14 @@ Use `kubectl create namespace` to create the namespaces you wish
 to use (or use existing namespaces).  Use `kubectl config
 set-context` to set the current namespace for each session.
 
-_**Console for site-1:**_
+_**Console for site 1:**_
 
 ~~~ shell
 kubectl create namespace site-1
 kubectl config set-context --current --namespace site-1
 ~~~
 
-_**Console for site-2:**_
+_**Console for site 2:**_
 
 ~~~ shell
 kubectl create namespace site-2
@@ -131,13 +131,13 @@ tunnel`][minikube-tunnel] before you install Skupper.
 
 [minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
 
-_**Console for site-1:**_
+_**Console for site 1:**_
 
 ~~~ shell
 kubectl apply -f skupper.yaml
 ~~~
 
-_**Console for site-2:**_
+_**Console for site 2:**_
 
 ~~~ shell
 kubectl apply -f skupper.yaml
@@ -236,7 +236,7 @@ spec:
 Now we're ready to apply everything.  Use the `kubectl apply`
 command with the resource definitions for each site.
 
-_**Console for site-1:**_
+_**Console for site 1:**_
 
 ~~~ shell
 kubectl apply -f site-1/site.yaml -f site-1/frontend.yaml
@@ -251,7 +251,7 @@ deployment.apps/frontend created
 service/frontend created
 ~~~
 
-_**Console for site-2:**_
+_**Console for site 2:**_
 
 ~~~ shell
 kubectl apply -f site-2/site.yaml -f site-2/backend.yaml
@@ -296,7 +296,7 @@ site 2 to create a link.
 
 [install]: https://skupper.io/install/index.html
 
-_**Console for site-1:**_
+_**Console for site 1:**_
 
 ~~~ shell
 skupper token create ~/secret.token
@@ -309,7 +309,7 @@ $ skupper token create ~/secret.token
 Token written to ~/secret.token
 ~~~
 
-_**Console for site-2:**_
+_**Console for site 2:**_
 
 ~~~ shell
 skupper link create ~/secret.token
@@ -338,7 +338,7 @@ that address.
 **Note:** The `<external-ip>` field in the following commands is a
 placeholder.  The actual value is an IP address.
 
-_**Console for site-1:**_
+_**Console for site 1:**_
 
 ~~~ shell
 kubectl get service/frontend
@@ -364,14 +364,14 @@ navigating to `http://<external-ip>:8080/` in your browser.
 To remove Skupper and the other resources from this exercise, use
 the following commands.
 
-_**Console for site-1:**_
+_**Console for site 1:**_
 
 ~~~ shell
 kubectl delete -f site-1/site.yaml -f site-1/frontend.yaml
 kubectl delete -f skupper.yaml
 ~~~
 
-_**Console for site-2:**_
+_**Console for site 2:**_
 
 ~~~ shell
 kubectl delete -f site-2/site.yaml -f site-2/backend.yaml
