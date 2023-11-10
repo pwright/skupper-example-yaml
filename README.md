@@ -40,7 +40,7 @@ It contains two services:
 * A frontend service that sends greetings to the backend and
   fetches new greetings in response.
 
-Skupper enables you place the backend in one cluster and the
+Skupper enables you to place the backend in one cluster and the
 frontend in another and maintain connectivity between the two
 services without exposing the backend to the public internet.
 
