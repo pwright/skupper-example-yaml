@@ -3,6 +3,6 @@ kind: ConfigMap
 metadata:
   name: skupper-site
 data:
-  name: west
+  name: site-1
   console: "true"
-  flow-controller: "true"
+  flow-collector: "true"

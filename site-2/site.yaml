@@ -3,5 +3,5 @@ kind: ConfigMap
 metadata:
   name: skupper-site
 data:
-  name: east
+  name: site-2
   ingress: "false"
