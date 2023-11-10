@@ -22,6 +22,7 @@ across cloud providers, data centers, and edge sites.
 * [Step 5: Apply your YAML resources](#step-5-apply-your-yaml-resources)
 * [Step 6: Link your namespaces](#step-6-link-your-namespaces)
 * [Step 7: Test the application](#step-7-test-the-application)
+* [Accessing the web console](#accessing-the-web-console)
 * [Cleaning up](#cleaning-up)
 * [About this example](#about-this-example)
 
@@ -358,6 +359,40 @@ OK
 
 If everything is in order, you can now access the web interface by
 navigating to `http://<external-ip>:8080/` in your browser.
+
+## Accessing the web console
+
+Skupper includes a web console you can use to view the application
+network.  To access it, use `skupper status` to look up the URL of
+the web console.  Then use `kubectl get
+secret/skupper-console-users` to look up the console admin
+password.
+
+**Note:** The `<console-url>` and `<password>` fields in the
+following output are placeholders.  The actual values are specific
+to your environment.
+
+_**Console for site 1:**_
+
+~~~ shell
+skupper status
+kubectl get secret/skupper-console-users -o jsonpath={.data.admin} | base64 -d
+~~~
+
+_Sample output:_
+
+~~~ console
+$ skupper status
+Skupper is enabled for namespace "site-1" in interior mode. It is connected to 1 other site. It has 1 exposed service.
+The site console url is: <console-url>
+The credentials for internal console-auth mode are held in secret: 'skupper-console-users'
+
+$ kubectl get secret/skupper-console-users -o jsonpath={.data.admin} | base64 -d
+<password>
+~~~
+
+Navigate to `<console-url>` in your browser.  When prompted, log
+in as user `admin` and enter the password.
 
 ## Cleaning up
 
