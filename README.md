@@ -275,8 +275,8 @@ procedural.
 
 **Note:** There are several ways to automate the generation and
 distribution of tokens across sites, using for example Ansible,
-Backstage, or Vault.  See [Token distribution]() for more
-information.
+Backstage, or Vault. <!-- See [Token distribution]() for more
+information. -->
 
 This example uses the Skupper command line tool to generate the
 secret token in site 1 and create the link in site 2.
