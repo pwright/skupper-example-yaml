@@ -114,7 +114,9 @@ check_the_status_of_your_namespaces:
     installed.
   commands:
     "*":
-      - await: [deployment/skupper-service-controller, deployment/skupper-router]
+      - await: [deployment/skupper-service-controller, deployment/skupper-router, configmap/skupper-network-status]
+      - run: sleep 15 # A temp hack for a 1.5.0 problem
+        apply: test
       - run: skupper status
   postamble: |
     _Sample output:_
@@ -206,14 +208,14 @@ accessing_the_web_console:
       - run: skupper status
         apply: readme
         output: |
-          Skupper is enabled for namespace "@namespace@" in interior mode. It is connected to 1 other site. It has 1 exposed service.
+          Skupper is enabled for namespace "@namespace@". It is connected to 1 other site. It has 1 exposed service.
           The site console url is: <console-url>
           The credentials for internal console-auth mode are held in secret: 'skupper-console-users'
       - run: kubectl get secret/skupper-console-users -o jsonpath={.data.admin} | base64 -d
         apply: readme
         output: <password>
       - await_external_ip: service/skupper
-      - run: curl --fail --insecure --verbose --retry 40 --retry-connrefused --retry-delay 5 $(kubectl get service/skupper -o jsonpath='https://{.status.loadBalancer.ingress[0].ip}:8080/') --user admin:$(kubectl get secret/skupper-console-users -o jsonpath={.data.admin} | base64 -d); echo
+      - run: curl --fail --insecure --verbose --retry 40 --retry-connrefused --retry-delay 5 $(kubectl get service/skupper -o jsonpath='https://{.status.loadBalancer.ingress[0].ip}:8010/') --user admin:$(kubectl get secret/skupper-console-users -o jsonpath={.data.admin} | base64 -d); echo
         apply: test
   postamble: |
     Navigate to `<console-url>` in your browser.  When prompted, log
