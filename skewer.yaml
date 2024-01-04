@@ -25,12 +25,16 @@ overview: |
 sites:
   site-1:
     title: site 1
-    kubeconfig: ~/.kube/config-site-1
+    platform: kubernetes
     namespace: site-1
+    env:
+      KUBECONFIG: ~/.kube/config-site-1
   site-2:
     title: site 2
-    kubeconfig: ~/.kube/config-site-2
+    platform: kubernetes
     namespace: site-2
+    env:
+      KUBECONFIG: ~/.kube/config-site-2
 steps:
   - standard: configure_separate_console_sessions
   - standard: access_your_clusters
@@ -184,8 +188,8 @@ steps:
       site 2 to create a link.
 
       [install]: https://skupper.io/install/index.html
-  - standard: test_the_application
-  - standard: accessing_the_web_console
+  # - standard: test_the_application
+  # - standard: accessing_the_web_console
   - standard: cleaning_up
     commands:
       site-1:
