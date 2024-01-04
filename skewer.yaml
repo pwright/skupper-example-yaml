@@ -1,4 +1,4 @@
-title: Skupper Hello World with YAML
+title: Skupper Hello World using YAML
 subtitle: A minimal HTTP application deployed across Kubernetes clusters using Skupper
 github_actions_url: https://github.com/ssorj/skupper-example-yaml/actions/workflows/main.yaml
 overview: |
@@ -23,18 +23,18 @@ overview: |
 
   [hello-world]: https://github.com/skupperproject/skupper-example-hello-world
 sites:
-  site-1:
-    title: site 1
+  west:
+    title: West
     platform: kubernetes
-    namespace: site-1
+    namespace: west
     env:
-      KUBECONFIG: ~/.kube/config-site-1
-  site-2:
-    title: site 2
+      KUBECONFIG: ~/.kube/config-west
+  east:
+    title: East
     platform: kubernetes
-    namespace: site-2
+    namespace: east
     env:
-      KUBECONFIG: ~/.kube/config-site-2
+      KUBECONFIG: ~/.kube/config-east
 steps:
   - standard: configure_separate_console_sessions
   - standard: access_your_clusters
@@ -49,28 +49,28 @@ steps:
 
       [minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
     commands:
-      site-1:
+      west:
         - run: kubectl apply -f skupper.yaml
-      site-2:
+      east:
         - run: kubectl apply -f skupper.yaml
   - title: Apply your YAML resources
     preamble: |
       To configure our example sites and service bindings, we are
       using the following resources:
 
-      Site 1:
+      West:
 
-      * [site.yaml](site-1/site.yaml) - Skupper configuration for site 1
-      * [frontend.yaml](site-1/frontend.yaml) - The Hello World frontend
+      * [site.yaml](west/site.yaml) - Skupper configuration for West
+      * [frontend.yaml](west/frontend.yaml) - The Hello World frontend
 
-      Site 2:
+      East:
 
-      * [site.yaml](site-2/site.yaml) - Skupper configuration for site 2
-      * [backend.yaml](site-2/backend.yaml) - The Hello World backend
+      * [site.yaml](east/site.yaml) - Skupper configuration for East
+      * [backend.yaml](east/backend.yaml) - The Hello World backend
 
       Let's look at some of these resources in more detail.
 
-      #### Resources in site 1
+      #### Resources in West
 
       The `site` ConfigMap defines a Skupper site for its associated
       Kubernetes namespace.  This is where you set site configuration
@@ -80,7 +80,7 @@ steps:
 
       [config]: https://skupper.io/docs/declarative/index.html
 
-      [site.yaml](site-1/site.yaml):
+      [site.yaml](west/site.yaml):
 
       ~~~ yaml
       apiVersion: v1
@@ -88,18 +88,18 @@ steps:
       metadata:
         name: skupper-site
       data:
-        name: site-1
+        name: west
         console: "true"
         flow-collector: "true"
       ~~~
 
-      #### Resources in site 2
+      #### Resources in East
 
-      Like the one for site 1, here is the Skupper site definition for
-      the site 2.  It includes the `ingress: "false"` setting since no
+      Like the one for West, here is the Skupper site definition for
+      the East.  It includes the `ingress: "false"` setting since no
       ingress is required at this site for the Hello World example.
 
-      [site.yaml](site-2/site.yaml):
+      [site.yaml](east/site.yaml):
 
       ~~~ yaml
       apiVersion: v1
@@ -107,17 +107,17 @@ steps:
       metadata:
         name: skupper-site
       data:
-        name: site-2
+        name: east
         ingress: "false"
       ~~~
 
-      In site 2, the `backend` deployment has an annotation named
+      In East, the `backend` deployment has an annotation named
       `skupper.io/proxy` with the value `tcp`.  This tells Skupper to
       expose the backend on the Skupper network.  As a consequence,
-      the frontend in site 1 will be able to see the backend and call
+      the frontend in West will be able to see the backend and call
       its API.
 
-      [backend.yaml](site-2/backend.yaml):
+      [backend.yaml](east/backend.yaml):
 
       <pre>apiVersion: apps/v1
       kind: Deployment
@@ -146,8 +146,8 @@ steps:
       Now we're ready to apply everything.  Use the `kubectl apply`
       command with the resource definitions for each site.
     commands:
-      site-1:
-        - run: kubectl apply -f site-1/site.yaml -f site-1/frontend.yaml
+      west:
+        - run: kubectl apply -f west/site.yaml -f west/frontend.yaml
           output: |
             configmap/skupper-site created
             deployment.apps/frontend created
@@ -156,8 +156,8 @@ steps:
         - await_resource: deployment/frontend
         - await_external_ip: service/skupper
         - await_external_ip: service/frontend
-      site-2:
-        - run: kubectl apply -f site-2/site.yaml -f site-2/backend.yaml
+      east:
+        - run: kubectl apply -f east/site.yaml -f east/backend.yaml
           output: |
             configmap/skupper-site created
             deployment.apps/backend created
@@ -177,7 +177,7 @@ steps:
       information. -->
 
       This example uses the Skupper command line tool to generate the
-      secret token in site 1 and create the link in site 2.
+      secret token in West and create the link in East.
 
       To install the Skupper command:
 
@@ -189,17 +189,17 @@ steps:
       Skupper][install].
 
       Once the command is installed, use `skupper token create` in
-      site 1 to generate the token.  Then, use `skupper link create` in
-      site 2 to create a link.
+      West to generate the token.  Then, use `skupper link create` in
+      East to create a link.
 
       [install]: https://skupper.io/install/index.html
   - standard: test_the_application
   - standard: accessing_the_web_console
   - standard: cleaning_up
     commands:
-      site-1:
-        - run: kubectl delete -f site-1/site.yaml -f site-1/frontend.yaml
+      west:
+        - run: kubectl delete -f west/site.yaml -f west/frontend.yaml
         - run: kubectl delete -f skupper.yaml
-      site-2:
-        - run: kubectl delete -f site-2/site.yaml -f site-2/backend.yaml
+      east:
+        - run: kubectl delete -f east/site.yaml -f east/backend.yaml
         - run: kubectl delete -f skupper.yaml
