@@ -70,75 +70,119 @@ def check_environment():
 # https://github.com/kubernetes/kubernetes/pull/87399
 # https://github.com/kubernetes/kubernetes/issues/80828
 # https://github.com/kubernetes/kubernetes/issues/83094
-def await_resource(group, name, timeout=240):
+def await_resource(resource, timeout=240):
+    assert "/" in resource, resource
+
     start_time = get_time()
 
-    notice(f"Waiting for {group}/{name} to become available")
+    debug(f"Waiting for {resource} to become available")
 
     while True:
-        if run(f"kubectl get {group}/{name}", check=False).exit_code == 0:
+        if run(f"kubectl get {resource}", check=False, quiet=True, stdout=DEVNULL).exit_code == 0:
             break
 
         if get_time() - start_time > timeout:
-            fail(f"Timed out waiting for {group}/{name}")
+            fail(f"Timed out waiting for {resource}")
 
-        sleep(5)
+        sleep(5, quiet=True)
 
-    if group == "deployment":
+        notice(f"Waiting for {resource} to become available")
+
+    if resource.startswith("deployment/"):
         try:
-            run(f"kubectl wait --for condition=available --timeout {timeout}s {group}/{name}")
+            run(f"kubectl wait --for condition=available --timeout {timeout}s {resource}", quiet=True, stash=True)
         except:
-            run(f"kubectl logs {group}/{name}")
+            run(f"kubectl logs {resource}")
             raise
 
-def await_external_ip(group, name, timeout=240):
+def await_external_ip(service, timeout=240):
+    assert service.startswith("service/"), service
+
     start_time = get_time()
 
-    await_resource(group, name, timeout=timeout)
+    debug(f"Waiting for external IP from {service} to become available")
+
+    await_resource(service, timeout=timeout)
 
     while True:
-        if call(f"kubectl get {group}/{name} -o jsonpath='{{.status.loadBalancer.ingress}}'") != "":
+        if call(f"kubectl get {service} -o jsonpath='{{.status.loadBalancer.ingress}}'", quiet=True) != "":
             break
 
         if get_time() - start_time > timeout:
-            fail(f"Timed out waiting for external IP for {group}/{name}")
+            fail(f"Timed out waiting for external IP for {service}")
 
-        sleep(5)
+        sleep(5, quiet=True)
 
-    return call(f"kubectl get {group}/{name} -o jsonpath='{{.status.loadBalancer.ingress[0].ip}}'")
+        notice(f"Waiting for external IP from {service} to become available")
+
+    return call(f"kubectl get {service} -o jsonpath='{{.status.loadBalancer.ingress[0].ip}}'", quiet=True)
+
+def await_http_ok(service, url_template, user=None, password=None, timeout=240):
+    assert service.startswith("service/"), service
+
+    start_time = get_time()
+
+    ip = await_external_ip(service, timeout=timeout)
+    url = url_template.format(ip)
+    insecure = url.startswith("https")
+
+    debug(f"Waiting for HTTP OK from {url}")
+
+    while True:
+        try:
+            http_get(url, insecure=insecure, user=user, password=password)
+        except PlanoError:
+            if get_time() - start_time > timeout:
+                fail(f"Timed out waiting for HTTP OK from {url}")
+
+            sleep(5, quiet=True)
+
+            notice(f"Waiting for HTTP OK from {url}")
+        else:
+            break
+
+def await_console_ok():
+    password = call("kubectl get secret/skupper-console-users -o jsonpath={.data.admin} | base64 -d", shell=True)
+    await_http_ok("service/skupper", "https://{}:8010/", user="admin", password=password)
 
 def run_steps_minikube(skewer_file, debug=False):
+    work_dir = make_temp_dir()
+
+    notice("Running the steps on Minikube")
+    notice("  Skewer file: " + get_absolute_path(skewer_file))
+    notice("  Work dir:    " + get_absolute_path(work_dir))
+
     check_environment()
     check_program("minikube")
 
     skewer_data = read_yaml(skewer_file)
-    kubeconfigs = list()
 
-    for site in skewer_data["sites"]:
-        kubeconfigs.append(make_temp_file())
+    for site in skewer_data["sites"].values():
+        for name, value in site["env"].items():
+            site["env"][name] = value.replace("~", work_dir)
 
     try:
         run("minikube -p skewer start")
 
-        for kubeconfig in kubeconfigs:
-            with working_env(KUBECONFIG=kubeconfig):
+        for site_name, site in skewer_data["sites"].items():
+            if site["platform"] != "kubernetes":
+                continue
+
+            with working_env(**site["env"]):
                 run("minikube -p skewer update-context")
-                check_file(ENV["KUBECONFIG"])
+
+                kubeconfig = ENV["KUBECONFIG"]
+
+                check_file(kubeconfig)
 
         with open("/tmp/minikube-tunnel-output", "w") as tunnel_output_file:
             with start("minikube -p skewer tunnel", output=tunnel_output_file):
-                run_steps(skewer_file, *kubeconfigs, debug=debug)
+                run_steps(work_dir, skewer_data, debug=debug)
     finally:
         run("minikube -p skewer delete")
 
-def run_steps(skewer_file, *kubeconfigs, debug=False):
+def run_steps(work_dir, skewer_data, debug=False):
     check_environment()
-
-    skewer_data = read_yaml(skewer_file)
-    work_dir = make_temp_dir()
-
-    for i, site in enumerate(skewer_data["sites"].values()):
-        site["kubeconfig"] = kubeconfigs[i]
 
     _apply_standard_steps(skewer_data)
 
@@ -156,25 +200,28 @@ def run_steps(skewer_file, *kubeconfigs, debug=False):
             print("TROUBLE!")
             print("-- Start of debug output")
 
-            for site_name, site_data in skewer_data["sites"].items():
-                kubeconfig = site_data["kubeconfig"].replace("~", work_dir)
+            for site_name, site in skewer_data["sites"].items():
                 print(f"---- Debug output for site '{site_name}'")
 
-                with working_env(KUBECONFIG=kubeconfig):
-                    run("kubectl get services", check=False)
-                    run("kubectl get deployments", check=False)
-                    run("kubectl get statefulsets", check=False)
-                    run("kubectl get pods", check=False)
-                    run("kubectl get events", check=False)
-                    run("skupper version", check=False)
-                    run("skupper status", check=False)
-                    run("skupper link status", check=False)
-                    run("skupper service status", check=False)
-                    run("skupper gateway status", check=False)
-                    run("skupper network status", check=False)
-                    run("skupper debug events", check=False)
-                    run("kubectl logs deployment/skupper-router", check=False)
-                    run("kubectl logs deployment/skupper-service-controller", check=False)
+                with logging_context(site_name):
+                    with working_env(**site["env"]):
+                        if site["platform"] == "kubernetes":
+                            run("kubectl get services", check=False)
+                            run("kubectl get deployments", check=False)
+                            run("kubectl get statefulsets", check=False)
+                            run("kubectl get pods", check=False)
+                            run("kubectl get events", check=False)
+
+                        run("skupper version", check=False)
+                        run("skupper status", check=False)
+                        run("skupper link status", check=False)
+                        run("skupper service status", check=False)
+                        run("skupper network status", check=False)
+                        run("skupper debug events", check=False)
+
+                        if site["platform"] == "kubernetes":
+                            run("kubectl logs deployment/skupper-router", check=False)
+                            run("kubectl logs deployment/skupper-service-controller", check=False)
 
             print("-- End of debug output")
 
@@ -185,31 +232,32 @@ def run_steps(skewer_file, *kubeconfigs, debug=False):
                 _run_step(work_dir, skewer_data, step, check=False)
                 break
 
-
 def _pause_for_demo(work_dir, skewer_data):
-    first_site_name, first_site_data = list(skewer_data["sites"].items())[0]
-    first_site_kubeconfig = first_site_data["kubeconfig"].replace("~", work_dir)
+    first_site_name, first_site = list(skewer_data["sites"].items())[0]
     frontend_url = None
 
-    with working_env(KUBECONFIG=first_site_kubeconfig):
-        console_ip = await_external_ip("service", "skupper")
-        console_url = f"https://{console_ip}:8010/"
-        password_data = call("kubectl get secret skupper-console-users -o jsonpath='{.data.admin}'")
-        password = base64_decode(password_data).decode("ascii")
+    if first_site["platform"] == "kubernetes":
+        with logging_context(first_site_name):
+            with working_env(**first_site["env"]):
+                console_ip = await_external_ip("service/skupper")
+                console_url = f"https://{console_ip}:8010/"
+                password_data = call("kubectl get secret skupper-console-users -o jsonpath='{.data.admin}'", quiet=True)
+                password = base64_decode(password_data).decode("ascii")
 
-        if run("kubectl get service/frontend", check=False, output=DEVNULL).exit_code == 0:
-            if call("kubectl get service/frontend -o jsonpath='{.spec.type}'") == "LoadBalancer":
-                frontend_ip = await_external_ip("service", "frontend")
-                frontend_url = f"http://{frontend_ip}:8080/"
+                if run("kubectl get service/frontend", check=False, output=DEVNULL, quiet=True).exit_code == 0:
+                    if call("kubectl get service/frontend -o jsonpath='{.spec.type}'", quiet=True) == "LoadBalancer":
+                        frontend_ip = await_external_ip("service/frontend")
+                        frontend_url = f"http://{frontend_ip}:8080/"
 
     print()
     print("Demo time!")
     print()
     print("Sites:")
 
-    for site_name, site_data in skewer_data["sites"].items():
-        kubeconfig = site_data["kubeconfig"].replace("~", work_dir)
-        print(f"  {site_name}: export KUBECONFIG={kubeconfig}")
+    for site_name, site in skewer_data["sites"].items():
+        if site["platform"] == "kubernetes":
+            kubeconfig = site["env"]["KUBECONFIG"]
+            print(f"  {site_name}: export KUBECONFIG={kubeconfig}")
 
     if frontend_url:
         print()
@@ -235,39 +283,41 @@ def _run_step(work_dir, skewer_data, step_data, check=True):
     items = step_data["commands"].items()
 
     for site_name, commands in items:
-        kubeconfig = skewer_data["sites"][site_name]["kubeconfig"].replace("~", work_dir)
+        site = skewer_data["sites"][site_name]
 
-        with working_env(KUBECONFIG=kubeconfig):
-            run(f"kubectl config set-context --current --namespace {site_name}")
+        with logging_context(site_name):
+            with working_env(**site["env"]):
+                if site["platform"] == "kubernetes":
+                    namespace = site["namespace"]
+                    run(f"kubectl config set-context --current --namespace {namespace}", stdout=DEVNULL, quiet=True)
 
-            for command in commands:
-                if command.get("apply") == "readme":
-                    continue
+                for command in commands:
+                    if command.get("apply") == "readme":
+                        continue
 
-                if "run" in command:
-                    run(command["run"].replace("~", work_dir), shell=True, check=check)
+                    if "run" in command:
+                        run(command["run"].replace("~", work_dir), shell=True, check=check)
 
-                if "await" in command:
-                    resources = command["await"]
+                    if "await_resource" in command:
+                        resource = command["await_resource"]
+                        await_resource(resource)
 
-                    if isinstance(resources, str):
-                        resources = (resources,)
+                    if "await_external_ip" in command:
+                        service = command["await_external_ip"]
+                        await_external_ip(service)
 
-                    for resource in resources:
-                        group, name = resource.split("/", 1)
-                        await_resource(group, name)
+                    if "await_http_ok" in command:
+                        service, url_template = command["await_http_ok"]
+                        await_http_ok(service, url_template)
 
-                if "await_external_ip" in command:
-                    resources = command["await_external_ip"]
-
-                    if isinstance(resources, str):
-                        resources = (resources,)
-
-                    for resource in resources:
-                        group, name = resource.split("/", 1)
-                        await_external_ip(group, name)
+                    if "await_console_ok" in command:
+                        await_console_ok()
 
 def generate_readme(skewer_file, output_file):
+    notice("Generating the readme")
+    notice("  Skewer file: " + get_absolute_path(skewer_file))
+    notice("  Output file: " + get_absolute_path(output_file))
+
     skewer_data = read_yaml(skewer_file)
     out = list()
 
@@ -382,8 +432,12 @@ def _generate_readme_step(skewer_data, step_data):
 
         for i, item in enumerate(items):
             site_name, commands = item
-            namespace = skewer_data["sites"][site_name]["namespace"]
+            namespace = skewer_data["sites"][site_name].get("namespace")
             title = skewer_data["sites"][site_name].get("title", namespace)
+
+            if title is None:
+                fail(f"Site '{site_name}' has no namespace or title")
+
             outputs = list()
 
             out.append(f"_**Console for {title}:**_")
@@ -448,22 +502,22 @@ def _apply_standard_steps(skewer_data):
             if "commands" in standard_step_data:
                 step_data["commands"] = dict()
 
-                for i, site in enumerate(skewer_data["sites"].items()):
-                    site_key, site_data = site
+                for i, site_item in enumerate(skewer_data["sites"].items()):
+                    site_name, site = site_item
 
                     if str(i) in standard_step_data["commands"]:
                         # Is a specific index in the standard commands?
                         commands = standard_step_data["commands"][str(i)]
-                        step_data["commands"][site_key] = _resolve_commands(commands, site_data)
+                        step_data["commands"][site_name] = _resolve_commands(commands, site)
                     elif "*" in standard_step_data["commands"]:
                         # Is "*" in the standard commands?
                         commands = standard_step_data["commands"]["*"]
-                        step_data["commands"][site_key] = _resolve_commands(commands, site_data)
+                        step_data["commands"][site_name] = _resolve_commands(commands, site)
                     else:
                         # Otherwise, omit commands for this site
                         continue
 
-def _resolve_commands(commands, site_data):
+def _resolve_commands(commands, site):
     resolved_commands = list()
 
     for command in commands:
@@ -471,13 +525,17 @@ def _resolve_commands(commands, site_data):
 
         if "run" in command:
             resolved_command["run"] = command["run"]
-            resolved_command["run"] = resolved_command["run"].replace("@kubeconfig@", site_data["kubeconfig"])
-            resolved_command["run"] = resolved_command["run"].replace("@namespace@", site_data["namespace"])
+
+            if site["platform"] == "kubernetes":
+                resolved_command["run"] = resolved_command["run"].replace("@kubeconfig@", site["env"]["KUBECONFIG"])
+                resolved_command["run"] = resolved_command["run"].replace("@namespace@", site["namespace"])
 
         if "output" in command:
             resolved_command["output"] = command["output"]
-            resolved_command["output"] = resolved_command["output"].replace("@kubeconfig@", site_data["kubeconfig"])
-            resolved_command["output"] = resolved_command["output"].replace("@namespace@", site_data["namespace"])
+
+            if site["platform"] == "kubernetes":
+                resolved_command["output"] = resolved_command["output"].replace("@kubeconfig@", site["env"]["KUBECONFIG"])
+                resolved_command["output"] = resolved_command["output"].replace("@namespace@", site["namespace"])
 
         resolved_commands.append(resolved_command)
 

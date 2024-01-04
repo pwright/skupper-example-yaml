@@ -27,6 +27,10 @@ import sys as _sys
 import traceback as _traceback
 
 class BaseCommand:
+    initial_logging_level = "warning"
+    verbose_logging_level = "notice"
+    quiet_logging_level = "error"
+
     def main(self, args=None):
         if args is None:
             args = ARGS[1:]
@@ -37,18 +41,18 @@ class BaseCommand:
 
         self.verbose = args.verbose or args.debug
         self.quiet = args.quiet
-        self.debug_enabled = args.debug
+        self.debug = args.debug
         self.init_only = args.init_only
 
-        level = "notice"
+        level = self.initial_logging_level
 
         if self.verbose:
-            level = "info"
+            level = self.verbose_logging_level
 
         if self.quiet:
-            level = "error"
+            level = self.quiet_logging_level
 
-        if self.debug_enabled:
+        if self.debug:
             level = "debug"
 
         with logging_enabled(level=level):
@@ -62,7 +66,7 @@ class BaseCommand:
             except KeyboardInterrupt:
                 pass
             except PlanoError as e:
-                if self.debug_enabled:
+                if self.debug:
                     _traceback.print_exc()
                     exit(1)
                 else:
@@ -98,6 +102,9 @@ class BaseArgumentParser(_argparse.ArgumentParser):
 _plano_command = None
 
 class PlanoCommand(BaseCommand):
+    initial_logging_level = "notice"
+    verbose_logging_level = "debug"
+
     def __init__(self, module=None, description="Run commands defined as Python functions", epilog=None):
         self.module = module
         self.bound_commands = dict()
@@ -419,11 +426,11 @@ def command(_function=None, name=None, parameters=None, parent=None, passthrough
 
             app.running_commands.append(self)
 
-            dashes = "--" * len(app.running_commands)
+            dashes = "--- " * (len(app.running_commands) - 1)
             display_args = list(self._get_display_args(args, kwargs))
 
             with console_color("magenta", file=_sys.stderr):
-                eprint("{}> {}".format(dashes, self.name), end="")
+                eprint("{}--> {}".format(dashes, self.name), end="")
 
                 if display_args:
                     eprint(" ({})".format(", ".join(display_args)), end="")
@@ -432,14 +439,9 @@ def command(_function=None, name=None, parameters=None, parent=None, passthrough
 
             self.function(*args, **kwargs)
 
-            cprint("<{} {}".format(dashes, self.name), color="magenta", file=_sys.stderr)
+            cprint("{}<-- {}".format(dashes, self.name), color="magenta", file=_sys.stderr)
 
             app.running_commands.pop()
-
-            if app.running_commands:
-                name = app.running_commands[-1].name
-
-                cprint("{}| {}".format(dashes[:-2], name), color="magenta", file=_sys.stderr)
 
         def _get_display_args(self, args, kwargs):
             for i, param in enumerate(self.parameters.values()):
