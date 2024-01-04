@@ -152,12 +152,17 @@ steps:
             configmap/skupper-site created
             deployment.apps/frontend created
             service/frontend created
+        - await_resource: deployment/skupper-service-controller
+        - await_resource: deployment/frontend
         - await_external_ip: service/skupper
+        - await_external_ip: service/frontend
       site-2:
         - run: kubectl apply -f site-2/site.yaml -f site-2/backend.yaml
           output: |
             configmap/skupper-site created
             deployment.apps/backend created
+        - await_resource: deployment/skupper-service-controller
+        - await_resource: deployment/backend
   - standard: link_your_namespaces
     preamble: |
       You can configure sites and service bindings declaratively, but
@@ -188,8 +193,8 @@ steps:
       site 2 to create a link.
 
       [install]: https://skupper.io/install/index.html
-  # - standard: test_the_application
-  # - standard: accessing_the_web_console
+  - standard: test_the_application
+  - standard: accessing_the_web_console
   - standard: cleaning_up
     commands:
       site-1:
