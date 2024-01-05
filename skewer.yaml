@@ -203,3 +203,6 @@ steps:
       east:
         - run: kubectl delete -f east/site.yaml -f east/backend.yaml
         - run: kubectl delete -f skupper.yaml
+          apply: readme
+        - run: kubectl delete -f skupper.yaml --ignore-not-found
+          apply: test
