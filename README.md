@@ -17,8 +17,8 @@ across cloud providers, data centers, and edge sites.
 * [Prerequisites](#prerequisites)
 * [Step 1: Configure separate console sessions](#step-1-configure-separate-console-sessions)
 * [Step 2: Access your clusters](#step-2-access-your-clusters)
-* [Step 3: Set up your namespaces](#step-3-set-up-your-namespaces)
-* [Step 4: Install Skupper in your namespaces](#step-4-install-skupper-in-your-namespaces)
+* [Step 3: Install Skupper in your clusters](#step-3-install-skupper-in-your-clusters)
+* [Step 4: Set up your namespaces](#step-4-set-up-your-namespaces)
 * [Step 5: Apply your YAML resources](#step-5-apply-your-yaml-resources)
 * [Step 6: Link your namespaces](#step-6-link-your-namespaces)
 * [Step 7: Test the application](#step-7-test-the-application)
@@ -41,11 +41,15 @@ It contains two services:
 * A frontend service that sends greetings to the backend and
   fetches new greetings in response.
 
+The two services run in two different clusters.  The frontend runs
+in a namespace on cluster 1 called West, and the backend runs in a
+namespace on cluster 2 called East.
+
+<img src="images/entities.svg" width="640"/>
+
 Skupper enables you to place the backend in one cluster and the
 frontend in another and maintain connectivity between the two
 services without exposing the backend to the public internet.
-
-<img src="images/entities.svg" width="640"/>
 
 [hello-world]: https://github.com/skupperproject/skupper-example-hello-world
 
@@ -102,7 +106,46 @@ configure access for each console session.
 
 [kube-providers]: https://skupper.io/start/kubernetes.html
 
-## Step 3: Set up your namespaces
+## Step 3: Install Skupper in your clusters
+
+Use the `kubectl apply` command to install the Skupper
+controller in each cluster.
+
+_**Console for West:**_
+
+~~~ shell
+kubectl apply -f skupper.yaml
+~~~
+
+_Sample output:_
+
+~~~ console
+$ kubectl apply -f skupper.yaml
+namespace/skupper-site-controller created
+serviceaccount/skupper-site-controller created
+clusterrole.rbac.authorization.k8s.io/skupper-site-controller created
+clusterrolebinding.rbac.authorization.k8s.io/skupper-site-controller created
+deployment.apps/skupper-site-controller created
+~~~
+
+_**Console for East:**_
+
+~~~ shell
+kubectl apply -f skupper.yaml
+~~~
+
+_Sample output:_
+
+~~~ console
+$ kubectl apply -f skupper.yaml
+namespace/skupper-site-controller created
+serviceaccount/skupper-site-controller created
+clusterrole.rbac.authorization.k8s.io/skupper-site-controller created
+clusterrolebinding.rbac.authorization.k8s.io/skupper-site-controller created
+deployment.apps/skupper-site-controller created
+~~~
+
+## Step 4: Set up your namespaces
 
 Use `kubectl create namespace` to create the namespaces you wish
 to use (or use existing namespaces).  Use `kubectl config
@@ -120,28 +163,6 @@ _**Console for East:**_
 ~~~ shell
 kubectl create namespace east
 kubectl config set-context --current --namespace east
-~~~
-
-## Step 4: Install Skupper in your namespaces
-
-Use the `kubectl apply` command to install the Skupper router
-and controller in each namespace.
-
-**Note:** If you are using Minikube, [you need to start `minikube
-tunnel`][minikube-tunnel] before you install Skupper.
-
-[minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
-
-_**Console for West:**_
-
-~~~ shell
-kubectl apply -f skupper.yaml
-~~~
-
-_**Console for East:**_
-
-~~~ shell
-kubectl apply -f skupper.yaml
 ~~~
 
 ## Step 5: Apply your YAML resources
@@ -237,6 +258,12 @@ spec:
 Now we're ready to apply everything.  Use the `kubectl apply`
 command with the resource definitions for each site.
 
+**Note:** If you are using Minikube, [you need to start
+`minikube tunnel`][minikube-tunnel] before you create the
+Skupper sites.
+
+[minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
+
 _**Console for West:**_
 
 ~~~ shell
@@ -325,8 +352,8 @@ Check the status of the link using 'skupper link status'.
 ~~~
 
 If your console sessions are on different machines, you may need
-to use `sftp` or a similar tool to transfer the token securely.
-By default, tokens expire after a single use or 15 minutes after
+to use `scp` or a similar tool to transfer the token securely.  By
+default, tokens expire after a single use or 15 minutes after
 creation.
 
 ## Step 7: Test the application

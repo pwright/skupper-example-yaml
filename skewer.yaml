@@ -15,11 +15,15 @@ overview: |
   * A frontend service that sends greetings to the backend and
     fetches new greetings in response.
 
+  The two services run in two different clusters.  The frontend runs
+  in a namespace on cluster 1 called West, and the backend runs in a
+  namespace on cluster 2 called East.
+
+  <img src="images/entities.svg" width="640"/>
+
   Skupper enables you to place the backend in one cluster and the
   frontend in another and maintain connectivity between the two
   services without exposing the backend to the public internet.
-
-  <img src="images/entities.svg" width="640"/>
 
   [hello-world]: https://github.com/skupperproject/skupper-example-hello-world
 sites:
@@ -38,21 +42,28 @@ sites:
 steps:
   - standard: configure_separate_console_sessions
   - standard: access_your_clusters
-  - standard: set_up_your_namespaces
-  - title: Install Skupper in your namespaces
+  - title: Install Skupper in your clusters
     preamble: |
-      Use the `kubectl apply` command to install the Skupper router
-      and controller in each namespace.
-
-      **Note:** If you are using Minikube, [you need to start `minikube
-      tunnel`][minikube-tunnel] before you install Skupper.
-
-      [minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
+      Use the `kubectl apply` command to install the Skupper
+      controller in each cluster.
     commands:
       west:
         - run: kubectl apply -f skupper.yaml
+          output: |
+            namespace/skupper-site-controller created
+            serviceaccount/skupper-site-controller created
+            clusterrole.rbac.authorization.k8s.io/skupper-site-controller created
+            clusterrolebinding.rbac.authorization.k8s.io/skupper-site-controller created
+            deployment.apps/skupper-site-controller created
       east:
         - run: kubectl apply -f skupper.yaml
+          output: |
+            namespace/skupper-site-controller created
+            serviceaccount/skupper-site-controller created
+            clusterrole.rbac.authorization.k8s.io/skupper-site-controller created
+            clusterrolebinding.rbac.authorization.k8s.io/skupper-site-controller created
+            deployment.apps/skupper-site-controller created
+  - standard: set_up_your_namespaces
   - title: Apply your YAML resources
     preamble: |
       To configure our example sites and service bindings, we are
@@ -145,6 +156,12 @@ steps:
 
       Now we're ready to apply everything.  Use the `kubectl apply`
       command with the resource definitions for each site.
+
+      **Note:** If you are using Minikube, [you need to start
+      `minikube tunnel`][minikube-tunnel] before you create the
+      Skupper sites.
+
+      [minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
     commands:
       west:
         - run: kubectl apply -f west/site.yaml -f west/frontend.yaml
