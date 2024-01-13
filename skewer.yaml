@@ -210,7 +210,7 @@ steps:
       East to create a link.
 
       [install]: https://skupper.io/install/index.html
-  - standard: test_the_application
+  - standard: hello_world/test_the_application
   - standard: accessing_the_web_console
   - standard: cleaning_up
     commands:
