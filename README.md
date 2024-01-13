@@ -41,9 +41,9 @@ It contains two services:
 * A frontend service that sends greetings to the backend and
   fetches new greetings in response.
 
-The two services run in two different clusters.  The frontend runs
-in a namespace on cluster 1 called West, and the backend runs in a
-namespace on cluster 2 called East.
+In this scenario, each service runs in a different Kubernetes
+cluster.  The frontend runs in a namespace on cluster 1 called West,
+and the backend runs in a namespace on cluster 2 called East.
 
 <img src="images/entities.svg" width="640"/>
 
