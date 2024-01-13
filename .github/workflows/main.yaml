@@ -36,7 +36,8 @@ jobs:
           minikube version: "v1.32.0"
           kubernetes version: "v1.29.0"
           github token: ${{secrets.GITHUB_TOKEN}}
-      - run: curl https://skupper.io/staging/install.sh | sh
+      - run: curl https://skupper.io/install.sh | sh
       - run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - run: echo "PLANO_COLOR=1" >> "$GITHUB_ENV"
       - run: ./plano test
+        env:
+          PLANO_COLOR: 1

@@ -27,9 +27,17 @@ import sys as _sys
 import traceback as _traceback
 
 class BaseCommand:
-    initial_logging_level = "warning"
-    verbose_logging_level = "notice"
-    quiet_logging_level = "error"
+    def parse_args(self, args): # pragma: nocover
+        raise NotImplementedError()
+
+    def configure_logging(self, args):
+        return "warning", None
+
+    def init(self, args):
+        raise NotImplementedError()
+
+    def run(self): # pragma: nocover
+        raise NotImplementedError()
 
     def main(self, args=None):
         if args is None:
@@ -39,47 +47,20 @@ class BaseCommand:
 
         assert isinstance(args, _argparse.Namespace), args
 
-        self.verbose = args.verbose or args.debug
-        self.quiet = args.quiet
-        self.debug = args.debug
-        self.init_only = args.init_only
+        level, output = self.configure_logging(args)
 
-        level = self.initial_logging_level
-
-        if self.verbose:
-            level = self.verbose_logging_level
-
-        if self.quiet:
-            level = self.quiet_logging_level
-
-        if self.debug:
-            level = "debug"
-
-        with logging_enabled(level=level):
+        with logging_enabled(level=level, output=output):
             try:
                 self.init(args)
-
-                if self.init_only:
-                    return
-
                 self.run()
             except KeyboardInterrupt:
                 pass
             except PlanoError as e:
-                if self.debug:
+                if PLANO_DEBUG:
                     _traceback.print_exc()
                     exit(1)
                 else:
                     exit(str(e))
-
-    def parse_args(self, args): # pragma: nocover
-        raise NotImplementedError()
-
-    def init(self, args): # pragma: nocover
-        pass
-
-    def run(self): # pragma: nocover
-        raise NotImplementedError()
 
 class BaseArgumentParser(_argparse.ArgumentParser):
     def __init__(self, **kwargs):
@@ -88,23 +69,11 @@ class BaseArgumentParser(_argparse.ArgumentParser):
         self.allow_abbrev = False
         self.formatter_class = _argparse.RawDescriptionHelpFormatter
 
-        self.add_argument("--verbose", action="store_true",
-                          help="Print detailed logging to the console")
-        self.add_argument("--quiet", action="store_true",
-                          help="Print no logging to the console")
-        self.add_argument("--debug", action="store_true",
-                          help="Print debugging output to the console")
-        self.add_argument("--init-only", action="store_true",
-                          help=_argparse.SUPPRESS)
-
         _capitalize_help(self)
 
 _plano_command = None
 
 class PlanoCommand(BaseCommand):
-    initial_logging_level = "notice"
-    verbose_logging_level = "debug"
-
     def __init__(self, module=None, description="Run commands defined as Python functions", epilog=None):
         self.module = module
         self.bound_commands = dict()
@@ -164,6 +133,16 @@ class PlanoCommand(BaseCommand):
 
         return args
 
+    def configure_logging(self, args):
+        if args.command is not None:
+            if args.verbose:
+                return "debug", None
+
+            if args.quiet:
+                return "warning", None
+
+        return "notice", None
+
     def init(self, args):
         self.help = args.help
 
@@ -172,6 +151,9 @@ class PlanoCommand(BaseCommand):
         self.command_kwargs = dict()
 
         if args.command is not None:
+            self.verbose = args.verbose
+            self.quiet = args.quiet
+
             for command in self.preceding_commands:
                 command()
 
@@ -203,8 +185,9 @@ class PlanoCommand(BaseCommand):
         with Timer() as timer:
             self.selected_command(*self.command_args, **self.command_kwargs)
 
-        cprint("OK", color="green", file=_sys.stderr, end="")
-        cprint(" ({})".format(format_duration(timer.elapsed_time)), color="magenta", file=_sys.stderr)
+        if not self.quiet:
+            cprint("OK", color="green", file=_sys.stderr, end="")
+            cprint(" ({})".format(format_duration(timer.elapsed_time)), color="magenta", file=_sys.stderr)
 
     def _load_module(self, name):
         try:
@@ -269,8 +252,15 @@ class PlanoCommand(BaseCommand):
 
             subparser = subparsers.add_parser(command.name, help=help, add_help=add_help, description=description,
                                               formatter_class=_argparse.RawDescriptionHelpFormatter)
+            subparser.add_argument("--verbose", action="store_true",
+                                   help="Print detailed logging to the console")
+            subparser.add_argument("--quiet", action="store_true",
+                                   help="Print no logging to the console")
 
             for param in command.parameters.values():
+                if param.name in ("verbose", "quiet"):
+                    continue
+
                 if param.positional:
                     if param.multiple:
                         subparser.add_argument(param.name, metavar=param.metavar, type=param.type, help=param.help,
@@ -323,9 +313,9 @@ def command(_function=None, name=None, parameters=None, parent=None, passthrough
             self.parent = parent
 
             if self.parent is None:
-                # Strip trailing underscores and convert remaining
-                # underscores to hyphens
-                default = self.function.__name__.rstrip("_").replace("_", "-")
+                # Strip leading and trailing underscores and convert
+                # remaining underscores to hyphens
+                default = self.function.__name__.strip("_").replace("_", "-")
 
                 self.name = nvl(self.name, default)
                 self.parameters = self._process_parameters(parameters)
@@ -426,20 +416,22 @@ def command(_function=None, name=None, parameters=None, parent=None, passthrough
 
             app.running_commands.append(self)
 
-            dashes = "--- " * (len(app.running_commands) - 1)
-            display_args = list(self._get_display_args(args, kwargs))
+            if not app.quiet:
+                dashes = "--- " * (len(app.running_commands) - 1)
+                display_args = list(self._get_display_args(args, kwargs))
 
-            with console_color("magenta", file=_sys.stderr):
-                eprint("{}--> {}".format(dashes, self.name), end="")
+                with console_color("magenta", file=_sys.stderr):
+                    eprint("{}--> {}".format(dashes, self.name), end="")
 
-                if display_args:
-                    eprint(" ({})".format(", ".join(display_args)), end="")
+                    if display_args:
+                        eprint(" ({})".format(", ".join(display_args)), end="")
 
-                eprint()
+                    eprint()
 
             self.function(*args, **kwargs)
 
-            cprint("{}<-- {}".format(dashes, self.name), color="magenta", file=_sys.stderr)
+            if not app.quiet:
+                cprint("{}<-- {}".format(dashes, self.name), color="magenta", file=_sys.stderr)
 
             app.running_commands.pop()
 
@@ -500,7 +492,7 @@ class CommandParameter:
         self.multiple = False
 
     def __repr__(self):
-        return "argument '{}' (default {})".format(self.name, repr(self.default))
+        return "parameter '{}' (default {})".format(self.name, repr(self.default))
 
 # Patch the default help text
 def _capitalize_help(parser):

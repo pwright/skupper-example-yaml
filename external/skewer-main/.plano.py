@@ -17,30 +17,42 @@
 # under the License.
 #
 
+import skewer.tests
+
 from skewer import *
 
 @command(passthrough=True)
-def test(coverage=False, passthrough_args=[]):
-    clean()
+def test(verbose=False, quiet=False, passthrough_args=[]):
+    args = ["-m", "skewer.tests"]
 
-    args = " ".join(passthrough_args)
+    if verbose:
+        args.append("--verbose")
 
-    if coverage:
-        check_program("coverage")
+    if quiet:
+        args.append("--quiet")
 
-        with working_env(PYTHONPATH="python"):
-            run(f"coverage run --source skewer -m skewer.tests {args}")
+    args += passthrough_args
 
-        run("coverage report")
-        run("coverage html")
-
-        print(f"file:{get_current_dir()}/htmlcov/index.html")
-    else:
-        with working_env(PYTHONPATH="python"):
-            run(f"python -m skewer.tests {args}")
+    PlanoTestCommand().main(args=args)
 
 @command
-def render():
+def coverage(verbose=False, quiet=False):
+    """
+    Run the tests and measure code coverage
+    """
+    check_program("coverage")
+
+    with working_env(PYTHONPATH="python"):
+        run("coverage run --source skewer -m skewer.tests")
+
+    run("coverage report")
+    run("coverage html")
+
+    if not quiet:
+        print(f"file:{get_current_dir()}/htmlcov/index.html")
+
+@command
+def render(verbose=False, quiet=False):
     """
     Render README.html from README.md
     """
@@ -48,12 +60,12 @@ def render():
 
     run(f"pandoc -o README.html README.md")
 
-    print(f"file:{get_real_path('README.html')}")
+    if not quiet:
+        print(f"file:{get_real_path('README.html')}")
 
 @command
 def clean():
-    remove(join("python", "__pycache__"))
-    remove(join("test-example", "python", "__pycache__"))
+    remove(find(".", "__pycache__"))
     remove("README.html")
     remove("htmlcov")
     remove(".coverage")
@@ -63,7 +75,6 @@ def update_plano():
     """
     Update the embedded Plano repo
     """
-
     make_dir("external")
     remove("external/plano-main")
     run("curl -sfL https://github.com/ssorj/plano/archive/main.tar.gz | tar -C external -xz", shell=True)
