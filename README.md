@@ -24,6 +24,8 @@ across cloud providers, data centers, and edge sites.
 * [Step 7: Test the application](#step-7-test-the-application)
 * [Accessing the web console](#accessing-the-web-console)
 * [Cleaning up](#cleaning-up)
+* [Summary](#summary)
+* [Next steps](#next-steps)
 * [About this example](#about-this-example)
 
 ## Overview
@@ -358,10 +360,19 @@ creation.
 
 ## Step 7: Test the application
 
-Now we're ready to try it out.  Use `kubectl get service/frontend`
-to look up the external IP of the frontend service.  Then use
-`curl` or a similar tool to request the `/api/health` endpoint at
-that address.
+We have established connectivity between the two namespaces and
+made the backend available to the frontend.  Before we can test
+the application, we need external access to the frontend.
+
+Use `kubectl expose` with `--type LoadBalancer` to open network
+access to the frontend service.
+
+Once the frontend is exposed, use `kubectl get service/frontend`
+to look up the external IP of the frontend service.  If the
+external IP is `<pending>`, try again after a moment.
+
+Once you have the external IP, use `curl` or a similar tool to
+request the `/api/health` endpoint at that address.
 
 **Note:** The `<external-ip>` field in the following commands is a
 placeholder.  The actual value is an IP address.
@@ -369,6 +380,7 @@ placeholder.  The actual value is an IP address.
 _**Console for West:**_
 
 ~~~ shell
+kubectl expose deployment/frontend --port 8080 --type LoadBalancer
 kubectl get service/frontend
 curl http://<external-ip>:8080/api/health
 ~~~
@@ -376,6 +388,9 @@ curl http://<external-ip>:8080/api/health
 _Sample output:_
 
 ~~~ console
+$ kubectl expose deployment/frontend --port 8080 --type LoadBalancer
+service/frontend exposed
+
 $ kubectl get service/frontend
 NAME       TYPE           CLUSTER-IP      EXTERNAL-IP     PORT(S)          AGE
 frontend   LoadBalancer   10.103.232.28   <external-ip>   8080:30407/TCP   15s
