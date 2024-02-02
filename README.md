@@ -15,14 +15,11 @@ across cloud providers, data centers, and edge sites.
 
 * [Overview](#overview)
 * [Prerequisites](#prerequisites)
-* [Step 1: Configure separate console sessions](#step-1-configure-separate-console-sessions)
-* [Step 2: Access your clusters](#step-2-access-your-clusters)
-* [Step 3: Install Skupper in your clusters](#step-3-install-skupper-in-your-clusters)
-* [Step 4: Set up your namespaces](#step-4-set-up-your-namespaces)
-* [Step 5: Apply your YAML resources](#step-5-apply-your-yaml-resources)
-* [Step 6: Link your namespaces](#step-6-link-your-namespaces)
-* [Step 7: Test the application](#step-7-test-the-application)
-* [Accessing the web console](#accessing-the-web-console)
+* [Step 1: Install Skupper in your clusters](#step-1-install-skupper-in-your-clusters)
+* [Step 2: Set up your namespaces](#step-2-set-up-your-namespaces)
+* [Step 3: Apply your YAML resources](#step-3-apply-your-yaml-resources)
+* [Step 4: Link your sites](#step-4-link-your-sites)
+* [Step 5: Access the frontend](#step-5-access-the-frontend)
 * [Cleaning up](#cleaning-up)
 * [Summary](#summary)
 * [Next steps](#next-steps)
@@ -66,12 +63,51 @@ services without exposing the backend to the public internet.
 [install-kubectl]: https://kubernetes.io/docs/tasks/tools/install-kubectl/
 [kube-providers]: https://skupper.io/start/kubernetes.html
 
-## Step 1: Configure separate console sessions
+## Step 1: Install Skupper in your clusters
 
-Skupper is designed for use with multiple namespaces, usually on
-different clusters.  The `skupper` and `kubectl` commands use your
-[kubeconfig][kubeconfig] and current context to select the
-namespace where they operate.
+Use the `kubectl apply` command to install the Skupper
+controller in each cluster.
+
+_**West:**_
+
+~~~ shell
+kubectl apply -f skupper.yaml
+~~~
+
+_Sample output:_
+
+~~~ console
+$ kubectl apply -f skupper.yaml
+namespace/skupper-site-controller created
+serviceaccount/skupper-site-controller created
+clusterrole.rbac.authorization.k8s.io/skupper-site-controller created
+clusterrolebinding.rbac.authorization.k8s.io/skupper-site-controller created
+deployment.apps/skupper-site-controller created
+~~~
+
+_**East:**_
+
+~~~ shell
+kubectl apply -f skupper.yaml
+~~~
+
+_Sample output:_
+
+~~~ console
+$ kubectl apply -f skupper.yaml
+namespace/skupper-site-controller created
+serviceaccount/skupper-site-controller created
+clusterrole.rbac.authorization.k8s.io/skupper-site-controller created
+clusterrolebinding.rbac.authorization.k8s.io/skupper-site-controller created
+deployment.apps/skupper-site-controller created
+~~~
+
+## Step 2: Set up your namespaces
+
+Skupper is designed for use with multiple Kubernetes namespaces,
+usually on different clusters.  The `skupper` and `kubectl`
+commands use your [kubeconfig][kubeconfig] and current context to
+select the namespace where they operate.
 
 [kubeconfig]: https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
 
@@ -83,91 +119,40 @@ A single kubeconfig supports only one active context per user.
 Since you will be using multiple contexts at once in this
 exercise, you need to create distinct kubeconfigs.
 
-Start a console session for each of your namespaces.  Set the
-`KUBECONFIG` environment variable to a different path in each
-session.
+For each namespace, open a new terminal window.  In each terminal,
+set the `KUBECONFIG` environment variable to a different path and
+log in to your cluster.  Then create the namespace you wish to use
+and set the namespace on your current context.
 
-_**Console for West:**_
+**Note:** The login procedure varies by provider.  See the
+documentation for yours:
+
+* [Minikube](https://skupper.io/start/minikube.html#cluster-access)
+* [Amazon Elastic Kubernetes Service (EKS)](https://skupper.io/start/eks.html#cluster-access)
+* [Azure Kubernetes Service (AKS)](https://skupper.io/start/aks.html#cluster-access)
+* [Google Kubernetes Engine (GKE)](https://skupper.io/start/gke.html#cluster-access)
+* [IBM Kubernetes Service](https://skupper.io/start/ibmks.html#cluster-access)
+* [OpenShift](https://skupper.io/start/openshift.html#cluster-access)
+
+_**West:**_
 
 ~~~ shell
 export KUBECONFIG=~/.kube/config-west
-~~~
-
-_**Console for East:**_
-
-~~~ shell
-export KUBECONFIG=~/.kube/config-east
-~~~
-
-## Step 2: Access your clusters
-
-The procedure for accessing a Kubernetes cluster varies by
-provider. [Find the instructions for your chosen
-provider][kube-providers] and use them to authenticate and
-configure access for each console session.
-
-[kube-providers]: https://skupper.io/start/kubernetes.html
-
-## Step 3: Install Skupper in your clusters
-
-Use the `kubectl apply` command to install the Skupper
-controller in each cluster.
-
-_**Console for West:**_
-
-~~~ shell
-kubectl apply -f skupper.yaml
-~~~
-
-_Sample output:_
-
-~~~ console
-$ kubectl apply -f skupper.yaml
-namespace/skupper-site-controller created
-serviceaccount/skupper-site-controller created
-clusterrole.rbac.authorization.k8s.io/skupper-site-controller created
-clusterrolebinding.rbac.authorization.k8s.io/skupper-site-controller created
-deployment.apps/skupper-site-controller created
-~~~
-
-_**Console for East:**_
-
-~~~ shell
-kubectl apply -f skupper.yaml
-~~~
-
-_Sample output:_
-
-~~~ console
-$ kubectl apply -f skupper.yaml
-namespace/skupper-site-controller created
-serviceaccount/skupper-site-controller created
-clusterrole.rbac.authorization.k8s.io/skupper-site-controller created
-clusterrolebinding.rbac.authorization.k8s.io/skupper-site-controller created
-deployment.apps/skupper-site-controller created
-~~~
-
-## Step 4: Set up your namespaces
-
-Use `kubectl create namespace` to create the namespaces you wish
-to use (or use existing namespaces).  Use `kubectl config
-set-context` to set the current namespace for each session.
-
-_**Console for West:**_
-
-~~~ shell
+# Enter your provider-specific login command
 kubectl create namespace west
 kubectl config set-context --current --namespace west
 ~~~
 
-_**Console for East:**_
+_**East:**_
 
 ~~~ shell
+export KUBECONFIG=~/.kube/config-east
+# Enter your provider-specific login command
 kubectl create namespace east
 kubectl config set-context --current --namespace east
 ~~~
 
-## Step 5: Apply your YAML resources
+## Step 3: Apply your YAML resources
 
 To configure our example sites and service bindings, we are
 using the following resources:
@@ -266,7 +251,7 @@ Skupper sites.
 
 [minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
 
-_**Console for West:**_
+_**West:**_
 
 ~~~ shell
 kubectl apply -f west/site.yaml -f west/frontend.yaml
@@ -278,10 +263,9 @@ _Sample output:_
 $ kubectl apply -f west/site.yaml -f west/frontend.yaml
 configmap/skupper-site created
 deployment.apps/frontend created
-service/frontend created
 ~~~
 
-_**Console for East:**_
+_**East:**_
 
 ~~~ shell
 kubectl apply -f east/site.yaml -f east/backend.yaml
@@ -295,7 +279,7 @@ configmap/skupper-site created
 deployment.apps/backend created
 ~~~
 
-## Step 6: Link your namespaces
+## Step 4: Link your sites
 
 You can configure sites and service bindings declaratively, but
 linking sites is different.  To create a link, you must have the
@@ -326,7 +310,7 @@ East to create a link.
 
 [install]: https://skupper.io/install/index.html
 
-_**Console for West:**_
+_**West:**_
 
 ~~~ shell
 skupper token create ~/secret.token
@@ -339,7 +323,7 @@ $ skupper token create ~/secret.token
 Token written to ~/secret.token
 ~~~
 
-_**Console for East:**_
+_**East:**_
 
 ~~~ shell
 skupper link create ~/secret.token
@@ -353,16 +337,15 @@ Site configured to link to https://10.105.193.154:8081/ed9c37f6-d78a-11ec-a8c7-0
 Check the status of the link using 'skupper link status'.
 ~~~
 
-If your console sessions are on different machines, you may need
+If your terminal sessions are on different machines, you may need
 to use `scp` or a similar tool to transfer the token securely.  By
 default, tokens expire after a single use or 15 minutes after
 creation.
 
-## Step 7: Test the application
+## Step 5: Access the frontend
 
-We have established connectivity between the two namespaces and
-made the backend available to the frontend.  Before we can test
-the application, we need external access to the frontend.
+In order to use and test the application, we need external access
+to the frontend.
 
 Use `kubectl expose` with `--type LoadBalancer` to open network
 access to the frontend service.
@@ -377,7 +360,7 @@ request the `/api/health` endpoint at that address.
 **Note:** The `<external-ip>` field in the following commands is a
 placeholder.  The actual value is an IP address.
 
-_**Console for West:**_
+_**West:**_
 
 ~~~ shell
 kubectl expose deployment/frontend --port 8080 --type LoadBalancer
@@ -402,53 +385,19 @@ OK
 If everything is in order, you can now access the web interface by
 navigating to `http://<external-ip>:8080/` in your browser.
 
-## Accessing the web console
-
-Skupper includes a web console you can use to view the application
-network.  To access it, use `skupper status` to look up the URL of
-the web console.  Then use `kubectl get
-secret/skupper-console-users` to look up the console admin
-password.
-
-**Note:** The `<console-url>` and `<password>` fields in the
-following output are placeholders.  The actual values are specific
-to your environment.
-
-_**Console for West:**_
-
-~~~ shell
-skupper status
-kubectl get secret/skupper-console-users -o jsonpath={.data.admin} | base64 -d
-~~~
-
-_Sample output:_
-
-~~~ console
-$ skupper status
-Skupper is enabled for namespace "west". It is connected to 1 other site. It has 1 exposed service.
-The site console url is: <console-url>
-The credentials for internal console-auth mode are held in secret: 'skupper-console-users'
-
-$ kubectl get secret/skupper-console-users -o jsonpath={.data.admin} | base64 -d
-<password>
-~~~
-
-Navigate to `<console-url>` in your browser.  When prompted, log
-in as user `admin` and enter the password.
-
 ## Cleaning up
 
 To remove Skupper and the other resources from this exercise, use
 the following commands.
 
-_**Console for West:**_
+_**West:**_
 
 ~~~ shell
 kubectl delete -f west/site.yaml -f west/frontend.yaml
 kubectl delete -f skupper.yaml
 ~~~
 
-_**Console for East:**_
+_**East:**_
 
 ~~~ shell
 kubectl delete -f east/site.yaml -f east/backend.yaml

@@ -39,8 +39,6 @@ sites:
     env:
       KUBECONFIG: ~/.kube/config-east
 steps:
-  - standard: configure_separate_console_sessions
-  - standard: access_your_clusters
   - title: Install Skupper in your clusters
     preamble: |
       Use the `kubectl apply` command to install the Skupper
@@ -62,7 +60,7 @@ steps:
             clusterrole.rbac.authorization.k8s.io/skupper-site-controller created
             clusterrolebinding.rbac.authorization.k8s.io/skupper-site-controller created
             deployment.apps/skupper-site-controller created
-  - standard: set_up_your_namespaces
+  - standard: kubernetes/set_up_your_namespaces
   - title: Apply your YAML resources
     preamble: |
       To configure our example sites and service bindings, we are
@@ -99,14 +97,12 @@ steps:
         name: skupper-site
       data:
         name: west
-        console: "true"
-        flow-collector: "true"
       ~~~
 
       #### Resources in East
 
       Like the one for West, here is the Skupper site definition for
-      the East.  It includes the `ingress: "false"` setting since no
+      the East.  It includes the `ingress: none` setting since no
       ingress is required at this site for the Hello World example.
 
       [site.yaml](east/site.yaml):
@@ -118,7 +114,7 @@ steps:
         name: skupper-site
       data:
         name: east
-        ingress: "false"
+        ingress: none
       ~~~
 
       In East, the `backend` deployment has an annotation named
@@ -169,7 +165,6 @@ steps:
             deployment.apps/frontend created
         - await_resource: deployment/skupper-service-controller
         - await_resource: deployment/frontend
-        - await_external_ip: service/skupper
       east:
         - run: kubectl apply -f east/site.yaml -f east/backend.yaml
           output: |
@@ -177,7 +172,7 @@ steps:
             deployment.apps/backend created
         - await_resource: deployment/skupper-service-controller
         - await_resource: deployment/backend
-  - standard: link_your_namespaces
+  - standard: link_your_sites
     preamble: |
       You can configure sites and service bindings declaratively, but
       linking sites is different.  To create a link, you must have the
@@ -207,8 +202,7 @@ steps:
       East to create a link.
 
       [install]: https://skupper.io/install/index.html
-  - standard: hello_world/test_the_application
-  - standard: accessing_the_web_console
+  - standard: hello_world/access_the_frontend
   - standard: cleaning_up
     commands:
       west:

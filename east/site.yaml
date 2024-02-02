@@ -4,4 +4,4 @@ metadata:
   name: skupper-site
 data:
   name: east
-  ingress: "none"
+  ingress: none
