@@ -173,11 +173,10 @@ Let's look at some of these resources in more detail.
 
 The `site` ConfigMap defines a Skupper site for its associated
 Kubernetes namespace.  This is where you set site configuration
-options.  We are setting the `console` and `flow-collector`
-options here in order to enable the console.  See the [config
-reference][config] for more information.
+options.  See the [config reference][config] for more
+information.
 
-[config]: https://skupper.io/docs/declarative/index.html
+[config]: https://skupper.io/docs/yaml/index.html
 
 [site.yaml](west/site.yaml):
 
@@ -188,14 +187,12 @@ metadata:
   name: skupper-site
 data:
   name: west
-  console: "true"
-  flow-collector: "true"
 ~~~
 
 #### Resources in East
 
 Like the one for West, here is the Skupper site definition for
-the East.  It includes the `ingress: "false"` setting since no
+the East.  It includes the `ingress: none` setting since no
 ingress is required at this site for the Hello World example.
 
 [site.yaml](east/site.yaml):
@@ -207,7 +204,7 @@ metadata:
   name: skupper-site
 data:
   name: east
-  ingress: "false"
+  ingress: none
 ~~~
 
 In East, the `backend` deployment has an annotation named
@@ -287,12 +284,14 @@ authentication secret and connection details of the remote site.
 Since these cannot be known in advance, linking must be
 procedural.
 
+<!--
 **Note:** There are several ways to automate the generation and
 distribution of tokens across sites, using for example Ansible,
-Backstage, or Vault. <!-- See [Token distribution]() for more
-information. -->
+Backstage, or Vault.  See [Token distribution][XXX] for more
+information.
+-->
 
-This example uses the Skupper command line tool to generate the
+This example uses the Skupper command-line tool to generate the
 secret token in West and create the link in East.
 
 To install the Skupper command:

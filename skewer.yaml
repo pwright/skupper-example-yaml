@@ -82,11 +82,10 @@ steps:
 
       The `site` ConfigMap defines a Skupper site for its associated
       Kubernetes namespace.  This is where you set site configuration
-      options.  We are setting the `console` and `flow-collector`
-      options here in order to enable the console.  See the [config
-      reference][config] for more information.
+      options.  See the [config reference][config] for more
+      information.
 
-      [config]: https://skupper.io/docs/declarative/index.html
+      [config]: https://skupper.io/docs/yaml/index.html
 
       [site.yaml](west/site.yaml):
 
@@ -180,12 +179,14 @@ steps:
       Since these cannot be known in advance, linking must be
       procedural.
 
+      <!--
       **Note:** There are several ways to automate the generation and
       distribution of tokens across sites, using for example Ansible,
-      Backstage, or Vault. <!-- See [Token distribution]() for more
-      information. -->
+      Backstage, or Vault.  See [Token distribution][XXX] for more
+      information.
+      -->
 
-      This example uses the Skupper command line tool to generate the
+      This example uses the Skupper command-line tool to generate the
       secret token in West and create the link in East.
 
       To install the Skupper command:
