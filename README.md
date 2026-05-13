@@ -2,7 +2,7 @@
 
 # Skupper Hello World using YAML
 
-[![main](https://github.com/skupperproject/skupper-example-yaml/actions/workflows/main.yaml/badge.svg)](https://github.com/skupperproject/skupper-example-yaml/actions/workflows/main.yaml)
+[![main](https://github.com/pwright/skupper-example-yaml/actions/workflows/main.yaml/badge.svg)](https://github.com/pwright/skupper-example-yaml/actions/workflows/main.yaml)
 
 #### A minimal HTTP application deployed across Kubernetes clusters using Skupper
 
@@ -19,10 +19,11 @@ across cloud providers, data centers, and edge sites.
 * [Prerequisites](#prerequisites)
 * [Step 1: Access your Kubernetes clusters](#step-1-access-your-kubernetes-clusters)
 * [Step 2: Create your Kubernetes namespaces](#step-2-create-your-kubernetes-namespaces)
-* [Step 3: Install Skupper on your Kubernetes clusters](#step-3-install-skupper-on-your-kubernetes-clusters)
-* [Step 4: Apply your YAML resources](#step-4-apply-your-yaml-resources)
-* [Step 5: Link your sites](#step-5-link-your-sites)
-* [Step 6: Access the frontend service](#step-6-access-the-frontend-service)
+* [Step 3: Create your backend namespace](#step-3-create-your-backend-namespace)
+* [Step 4: Install Skupper on your Kubernetes clusters](#step-4-install-skupper-on-your-kubernetes-clusters)
+* [Step 5: Apply your YAML resources](#step-5-apply-your-yaml-resources)
+* [Step 6: Link your sites](#step-6-link-your-sites)
+* [Step 7: Access the frontend service](#step-7-access-the-frontend-service)
 * [Cleaning up](#cleaning-up)
 * [Next steps](#next-steps)
 * [About this example](#about-this-example)
@@ -43,8 +44,10 @@ It contains two services:
   fetches new greetings in response.
 
 In this scenario, each service runs in a different Kubernetes
-cluster.  The frontend runs in a namespace on cluster 1 called West,
-and the backend runs in a namespace on cluster 2 called East.
+cluster.  The frontend runs in a namespace on cluster 1 called
+West.  On cluster 2, the Skupper site runs in namespace East while
+the backend runs in peer namespace North and is attached to the
+site.
 
 <img src="images/entities.svg" width="640"/>
 
@@ -122,7 +125,19 @@ kubectl create namespace east
 kubectl config set-context --current --namespace east
 ~~~
 
-## Step 3: Install Skupper on your Kubernetes clusters
+## Step 3: Create your backend namespace
+
+The backend workload runs in a peer namespace called `north` on
+cluster 2.  Create that namespace before applying the backend
+deployment and attached connector resources.
+
+_**East:**_
+
+~~~ shell
+kubectl create namespace north
+~~~
+
+## Step 4: Install Skupper on your Kubernetes clusters
 
 Using Skupper on Kubernetes requires the installation of the
 Skupper custom resource definitions (CRDs) and the Skupper
@@ -143,7 +158,7 @@ _**East:**_
 kubectl apply -f https://skupper.io/v2/install.yaml
 ~~~
 
-## Step 4: Apply your YAML resources
+## Step 5: Apply your YAML resources
 
 To configure our example sites and service bindings, we are
 using the following resources:
@@ -155,17 +170,24 @@ West:
 * [frontend.yaml](west/frontend.yaml) - The Hello World frontend
   deployment
 * [listener.yaml](west/listener.yaml) - A Skupper _Listener_
-  resource for exposing the backend in East to the local
-  frontend
+  resource for exposing the backend attached through East to the
+  local frontend
 
 East:
 
 * [site.yaml](east/site.yaml) - The Skupper _Site_ resource for
   East
-* [backend.yaml](east/backend.yaml) - The Hello World backend
+* [attached-connector-binding.yaml](east/attached-connector-binding.yaml) -
+  An _AttachedConnectorBinding_ resource for binding the backend
+  in North to the listener in West
+
+North:
+
+* [backend.yaml](north/backend.yaml) - The Hello World backend
   deployment
-* [connector.yaml](east/connector.yaml) - A Skupper _Connector_
-  resource for binding the backend to the listener in West
+* [attached-connector.yaml](north/attached-connector.yaml) - An
+  _AttachedConnector_ resource for exposing the backend through
+  the East site
 
 Let's look at these resources in more detail.
 
@@ -185,7 +207,7 @@ West, so the receiving side, West, must enable link access.
 [site.yaml](west/site.yaml):
 
 ~~~ yaml
-apiVersion: skupper.io/v1alpha1
+apiVersion: skupper.io/v2alpha1
 kind: Site
 metadata:
   name: west
@@ -234,7 +256,7 @@ resource reference][listener-config] for more information.
 [listener.yaml](west/listener.yaml):
 
 ~~~ yaml
-apiVersion: skupper.io/v1alpha1
+apiVersion: skupper.io/v2alpha1
 kind: Listener
 metadata:
   name: backend
@@ -247,27 +269,50 @@ spec:
 
 ### Resources in East
 
-The _Site_ resource for East.
+The _Site_ resource for East.  Attached connectors require a
+cluster-wide Skupper deployment, and the site namespace remains
+the control point for the remote listener binding.
 
 [site.yaml](east/site.yaml):
 
 ~~~ yaml
-apiVersion: skupper.io/v1alpha1
+apiVersion: skupper.io/v2alpha1
 kind: Site
 metadata:
   name: east
   namespace: east
 ~~~
 
-The backend is a standard Kubernetes deployment.
+The _AttachedConnectorBinding_ resource below is created in the
+site namespace.  It binds the listener routing key `backend` to
+the attached connector running in namespace `north`.
 
-[backend.yaml](east/backend.yaml):
+[attached-connector-binding.yaml](east/attached-connector-binding.yaml):
+
+~~~ yaml
+apiVersion: skupper.io/v2alpha1
+kind: AttachedConnectorBinding
+metadata:
+  name: backend
+  namespace: east
+spec:
+  connectorNamespace: north
+  routingKey: backend
+~~~
+
+### Resources in North
+
+The backend is a standard Kubernetes deployment in the peer
+namespace.
+
+[backend.yaml](north/backend.yaml):
 
 ~~~ yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
+  namespace: north
   labels:
     app: backend
 spec:
@@ -287,26 +332,23 @@ spec:
             - containerPort: 8080
 ~~~
 
-The _Connector_ resource below configures the router to take
-remote connections with routing key `backend` and forward them
-to port 8080 on pods matching the selector `app=backend`.  See
-the [Connector resource reference][connector-config] for more
-information.
+The _AttachedConnector_ resource below configures the East site
+to forward remote connections with routing key `backend` to port
+8080 on pods matching the selector `app=backend` in namespace
+`north`.
 
-[connector-config]: https://skupperproject.github.io/refdog/resources/connector.html
-
-[connector.yaml](east/connector.yaml):
+[attached-connector.yaml](north/attached-connector.yaml):
 
 ~~~ yaml
-apiVersion: skupper.io/v1alpha1
-kind: Connector
+apiVersion: skupper.io/v2alpha1
+kind: AttachedConnector
 metadata:
   name: backend
-  namespace: east
+  namespace: north
 spec:
-  routingKey: backend
-  port: 8080
+  siteNamespace: east
   selector: app=backend
+  port: 8080
 ~~~
 
 ### Applying the resources
@@ -338,19 +380,24 @@ listener.skupper.io/backend created
 _**East:**_
 
 ~~~ shell
-kubectl apply -f east/site.yaml -f east/backend.yaml -f east/connector.yaml
+kubectl apply -f east/site.yaml -f east/attached-connector-binding.yaml
+kubectl apply -f north/backend.yaml -f north/attached-connector.yaml
+kubectl wait --for condition=available --timeout 2m -n north deployment/backend
 ~~~
 
 _Sample output:_
 
 ~~~ console
-$ kubectl apply -f east/site.yaml -f east/backend.yaml -f east/connector.yaml
+$ kubectl apply -f east/site.yaml -f east/attached-connector-binding.yaml
 site.skupper.io/east created
+attachedconnectorbinding.skupper.io/backend created
+
+$ kubectl apply -f north/backend.yaml -f north/attached-connector.yaml
 deployment.apps/backend created
-connector.skupper.io/backend created
+attachedconnector.skupper.io/backend created
 ~~~
 
-## Step 5: Link your sites
+## Step 6: Link your sites
 
 A Skupper _link_ is a channel for communication between two
 sites.  Links serve as a transport for application connections
@@ -432,7 +479,7 @@ to use `scp` or a similar tool to transfer the token securely.  By
 default, tokens expire after a single use or 15 minutes after
 being issued.
 
-## Step 6: Access the frontend service
+## Step 7: Access the frontend service
 
 In order to use and test the application, we need external access
 to the frontend.
@@ -464,6 +511,7 @@ _**East:**_
 
 ~~~ shell
 kubectl delete -f east/ --ignore-not-found
+kubectl delete -f north/ --ignore-not-found
 ~~~
 
 ## Next steps

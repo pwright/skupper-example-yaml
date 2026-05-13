@@ -15,8 +15,10 @@ overview: |
     fetches new greetings in response.
 
   In this scenario, each service runs in a different Kubernetes
-  cluster.  The frontend runs in a namespace on cluster 1 called West,
-  and the backend runs in a namespace on cluster 2 called East.
+  cluster.  The frontend runs in a namespace on cluster 1 called
+  West.  On cluster 2, the Skupper site runs in namespace East while
+  the backend runs in peer namespace North and is attached to the
+  site.
 
   <img src="images/entities.svg" width="640"/>
 
@@ -41,6 +43,17 @@ sites:
 steps:
   - standard: platform/access_your_kubernetes_clusters
   - standard: platform/create_your_kubernetes_namespaces
+  - title: Create your backend namespace
+    preamble: |
+      The backend workload runs in a peer namespace called `north` on
+      cluster 2.  Create that namespace before applying the backend
+      deployment and attached connector resources.
+    commands:
+      east:
+        - run: kubectl create namespace north
+          apply: readme
+        - run: kubectl create namespace north --dry-run=client -o yaml | kubectl apply -f -
+          apply: test
   - standard: platform/install_skupper_on_your_kubernetes_clusters
   - title: Apply your YAML resources
     preamble: |
@@ -54,17 +67,24 @@ steps:
       * [frontend.yaml](west/frontend.yaml) - The Hello World frontend
         deployment
       * [listener.yaml](west/listener.yaml) - A Skupper _Listener_
-        resource for exposing the backend in East to the local
-        frontend
+        resource for exposing the backend attached through East to the
+        local frontend
 
       East:
 
       * [site.yaml](east/site.yaml) - The Skupper _Site_ resource for
         East
-      * [backend.yaml](east/backend.yaml) - The Hello World backend
+      * [attached-connector-binding.yaml](east/attached-connector-binding.yaml) -
+        An _AttachedConnectorBinding_ resource for binding the backend
+        in North to the listener in West
+
+      North:
+
+      * [backend.yaml](north/backend.yaml) - The Hello World backend
         deployment
-      * [connector.yaml](east/connector.yaml) - A Skupper _Connector_
-        resource for binding the backend to the listener in West
+      * [attached-connector.yaml](north/attached-connector.yaml) - An
+        _AttachedConnector_ resource for exposing the backend through
+        the East site
 
       Let's look at these resources in more detail.
 
@@ -84,7 +104,7 @@ steps:
       [site.yaml](west/site.yaml):
 
       ~~~ yaml
-      apiVersion: skupper.io/v1alpha1
+      apiVersion: skupper.io/v2alpha1
       kind: Site
       metadata:
         name: west
@@ -133,7 +153,7 @@ steps:
       [listener.yaml](west/listener.yaml):
 
       ~~~ yaml
-      apiVersion: skupper.io/v1alpha1
+      apiVersion: skupper.io/v2alpha1
       kind: Listener
       metadata:
         name: backend
@@ -146,27 +166,50 @@ steps:
 
       ### Resources in East
 
-      The _Site_ resource for East.
+      The _Site_ resource for East.  Attached connectors require a
+      cluster-wide Skupper deployment, and the site namespace remains
+      the control point for the remote listener binding.
 
       [site.yaml](east/site.yaml):
 
       ~~~ yaml
-      apiVersion: skupper.io/v1alpha1
+      apiVersion: skupper.io/v2alpha1
       kind: Site
       metadata:
         name: east
         namespace: east
       ~~~
 
-      The backend is a standard Kubernetes deployment.
+      The _AttachedConnectorBinding_ resource below is created in the
+      site namespace.  It binds the listener routing key `backend` to
+      the attached connector running in namespace `north`.
 
-      [backend.yaml](east/backend.yaml):
+      [attached-connector-binding.yaml](east/attached-connector-binding.yaml):
+
+      ~~~ yaml
+      apiVersion: skupper.io/v2alpha1
+      kind: AttachedConnectorBinding
+      metadata:
+        name: backend
+        namespace: east
+      spec:
+        connectorNamespace: north
+        routingKey: backend
+      ~~~
+
+      ### Resources in North
+
+      The backend is a standard Kubernetes deployment in the peer
+      namespace.
+
+      [backend.yaml](north/backend.yaml):
 
       ~~~ yaml
       apiVersion: apps/v1
       kind: Deployment
       metadata:
         name: backend
+        namespace: north
         labels:
           app: backend
       spec:
@@ -186,26 +229,23 @@ steps:
                   - containerPort: 8080
       ~~~
 
-      The _Connector_ resource below configures the router to take
-      remote connections with routing key `backend` and forward them
-      to port 8080 on pods matching the selector `app=backend`.  See
-      the [Connector resource reference][connector-config] for more
-      information.
+      The _AttachedConnector_ resource below configures the East site
+      to forward remote connections with routing key `backend` to port
+      8080 on pods matching the selector `app=backend` in namespace
+      `north`.
 
-      [connector-config]: https://skupperproject.github.io/refdog/resources/connector.html
-
-      [connector.yaml](east/connector.yaml):
+      [attached-connector.yaml](north/attached-connector.yaml):
 
       ~~~ yaml
-      apiVersion: skupper.io/v1alpha1
-      kind: Connector
+      apiVersion: skupper.io/v2alpha1
+      kind: AttachedConnector
       metadata:
         name: backend
-        namespace: east
+        namespace: north
       spec:
-        routingKey: backend
-        port: 8080
+        siteNamespace: east
         selector: app=backend
+        port: 8080
       ~~~
 
       ### Applying the resources
@@ -229,14 +269,17 @@ steps:
           apply: test
         - await_resource: deployment/frontend
       east:
-        - run: kubectl apply -f east/site.yaml -f east/backend.yaml -f east/connector.yaml
+        - run: kubectl apply -f east/site.yaml -f east/attached-connector-binding.yaml
           output: |
             site.skupper.io/east created
+            attachedconnectorbinding.skupper.io/backend created
+        - run: kubectl apply -f north/backend.yaml -f north/attached-connector.yaml
+          output: |
             deployment.apps/backend created
-            connector.skupper.io/backend created
+            attachedconnector.skupper.io/backend created
         - run: kubectl wait site/east --for condition=Ready --timeout 2m
           apply: test
-        - await_resource: deployment/backend
+        - run: kubectl wait --for condition=available --timeout 2m -n north deployment/backend
   - standard: skupper/link_your_sites/kubernetes_cli
     preamble: |
       A Skupper _link_ is a channel for communication between two
@@ -282,3 +325,4 @@ steps:
         - run: kubectl delete -f west/ --ignore-not-found
       east:
         - run: kubectl delete -f east/ --ignore-not-found
+        - run: kubectl delete -f north/ --ignore-not-found
