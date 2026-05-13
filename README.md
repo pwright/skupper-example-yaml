@@ -1,6 +1,6 @@
 <!-- NOTE: This file is generated from skewer.yaml.  Do not edit it directly. -->
 
-# Skupper Hello World using YAML
+# Skupper Hello World using YAML (attached connectors)
 
 [![main](https://github.com/pwright/skupper-example-yaml/actions/workflows/main.yaml/badge.svg)](https://github.com/pwright/skupper-example-yaml/actions/workflows/main.yaml)
 
@@ -285,7 +285,7 @@ metadata:
 
 The _AttachedConnectorBinding_ resource below is created in the
 site namespace.  It binds the listener routing key `backend` to
-the attached connector running in namespace `north`.
+the attached connector in namespace `north`.
 
 [attached-connector-binding.yaml](east/attached-connector-binding.yaml):
 
@@ -332,10 +332,9 @@ spec:
             - containerPort: 8080
 ~~~
 
-The _AttachedConnector_ resource below configures the East site
-to forward remote connections with routing key `backend` to port
-8080 on pods matching the selector `app=backend` in namespace
-`north`.
+The _AttachedConnector_ resource below is placed in namespace
+`north` and attaches to the East site.  It forwards connections
+to port 8080 on pods matching the selector `app=backend`.
 
 [attached-connector.yaml](north/attached-connector.yaml):
 
