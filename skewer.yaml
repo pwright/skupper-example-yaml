@@ -1,4 +1,4 @@
-title: Skupper Hello World using YAML
+title: Skupper Hello World using YAML (attached connectors)
 subtitle: A minimal HTTP application deployed across Kubernetes clusters using Skupper
 overview: |
   This example is a variant of [Skupper Hello World][hello-world] that
